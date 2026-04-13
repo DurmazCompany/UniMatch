@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { TextInput, View, Text, TextInputProps, ViewStyle } from "react-native";
 
+import { theme } from "@/lib/theme";
+
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
@@ -15,7 +17,7 @@ export function Input({ label, error, containerStyle, ...props }: InputProps) {
       {label ? (
         <Text
           style={{
-            color: "#8E8E93",
+            color: theme.textSecondary,
             fontSize: 13,
             fontWeight: "600",
             marginBottom: 8,
@@ -27,36 +29,36 @@ export function Input({ label, error, containerStyle, ...props }: InputProps) {
         </Text>
       ) : null}
       <TextInput
-        placeholderTextColor="#4B4B6B"
+        placeholderTextColor={theme.textPlaceholder}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={[
           {
-            backgroundColor: "#1E1E1E",
-            borderWidth: 1,
+            backgroundColor: theme.inputBackground,
+            borderWidth: 1.5,
             borderColor: focused
-              ? "#E8445A"
+              ? theme.primary
               : error
-                ? "#FF3B30"
-                : "rgba(255,255,255,0.1)",
+                ? theme.error
+                : theme.borderDefault,
             borderRadius: 14,
             paddingHorizontal: 18,
             paddingVertical: 16,
-            color: "#F9FAFB",
+            color: theme.textPrimary,
             fontSize: 16,
           },
-          focused && {
-            shadowColor: "#E8445A",
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-          },
+            focused && {
+              shadowColor: theme.primary,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+            },
           props.style as object,
         ]}
         {...props}
       />
       {error ? (
-        <Text style={{ color: "#EF4444", fontSize: 12, marginTop: 6 }}>{error}</Text>
+        <Text style={{ color: theme.error, fontSize: 12, marginTop: 6 }}>{error}</Text>
       ) : null}
     </View>
   );

@@ -1,5 +1,6 @@
 import { View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { theme } from "@/lib/theme";
 
 interface ProfilePowerBarProps {
   power: number; // 0-100
@@ -7,9 +8,9 @@ interface ProfilePowerBarProps {
 
 export function ProfilePowerBar({ power }: ProfilePowerBarProps) {
   const getColor = () => {
-    if (power < 40) return ["#EF4444", "#F97316"] as const;
-    if (power < 70) return ["#F97316", "#F59E0B"] as const;
-    return ["#10B981", "#34D399"] as const;
+    if (power < 40) return ["#FF3B30", "#FF9500"] as const; // Red to Orange
+    if (power < 70) return ["#FF9500", "#FFCC00"] as const; // Orange to Yellow
+    return ["#4CD964", "#34D399"] as const; // Green
   };
 
   const getMessage = () => {
@@ -22,8 +23,8 @@ export function ProfilePowerBar({ power }: ProfilePowerBarProps) {
   return (
     <View style={{ gap: 10 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ color: "#F9FAFB", fontSize: 15, fontWeight: "700" }}>Profil Gücü</Text>
-        <Text style={{ color: "#FF5E73", fontSize: 15, fontWeight: "700" }}>{power}%</Text>
+        <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700" }}>Profil Gücü</Text>
+        <Text style={{ color: theme.primary, fontSize: 15, fontWeight: "700" }}>{power}%</Text>
       </View>
       <View
         style={{
@@ -40,9 +41,9 @@ export function ProfilePowerBar({ power }: ProfilePowerBarProps) {
           style={{ height: "100%", width: `${power}%`, borderRadius: 100 }}
         />
       </View>
-      <Text style={{ color: "#6B7280", fontSize: 13 }}>{getMessage()}</Text>
+      <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{getMessage()}</Text>
       {power < 80 ? (
-        <Text style={{ color: "#FF5E73", fontSize: 12, fontStyle: "italic" }}>
+        <Text style={{ color: theme.primary, fontSize: 12, fontStyle: "italic" }}>
           Profilini %80'e tamamlarsan 3x daha fazla kişiye gösterilirsin!
         </Text>
       ) : null}
