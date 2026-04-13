@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Better Auth required models
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  profile       Profile?
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// University reference table (for future use, not linked to profiles)
+model University {
+  id          String    @id @default(cuid())
+  name        String
+  emailDomain String    @unique
+  logoUrl     String?
+  createdAt   DateTime  @default(now())
+}
+
+model Profile {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university        String    // User-entered university name
+  name              String
+  birthDate         DateTime
+  gender            String    // "male", "female", "other"
+  department        String
+  year              Int       // 1-6
+  bio               String?
+  photos            String    // JSON array of photo URLs
+  hobbies           String?   // JSON array
+  selfieVerified    Boolean   @default(false)
+  profilePower      Int       @default(0) // 0-100
+  streakCount       Int       @default(0)
+  lastStreakDate    DateTime?
+  swipesToday       Int       @default(0)
+  lastSwipeDate     DateTime?
+  superLikesLeft    Int       @default(1) // resets daily for free
+  isOnCampusToday   Boolean   @default(false)
+  onCampusTodayDate DateTime?
+  isPremium         Boolean   @default(false)
+  premiumUntil      DateTime?
+  pushToken         String?   // Expo push notification token
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sentSwipes        Swipe[]   @relation("SwiperProfile")
+  receivedSwipes    Swipe[]   @relation("SwipedProfile")
+  matchesAsUser1    Match[]   @relation("MatchUser1")
+  matchesAsUser2    Match[]   @relation("MatchUser2")
+  sentMessages      Message[]
+}
+
+model Swipe {
+  id         String   @id @default(cuid())
+  swiperId   String
+  swipedId   String
+  direction  String   // "like", "pass", "super"
+  createdAt  DateTime @default(now())
+  swiper     Profile  @relation("SwiperProfile", fields: [swiperId], references: [id], onDelete: Cascade)
+  swiped     Profile  @relation("SwipedProfile", fields: [swipedId], references: [id], onDelete: Cascade)
+
+  @@unique([swiperId, swipedId])
+}
+
+model Match {
+  id                  String    @id @default(cuid())
+  user1Id             String
+  user2Id             String
+  matchedAt           DateTime  @default(now())
+  expiresAt           DateTime  // 48 hours after match
+  iceBreakerQuestion  String
+  iceBreakerAccepted  Boolean   @default(false)
+  compatibilityScore  Int       @default(0) // 0-100
+  isActive            Boolean   @default(true)
+  user1               Profile   @relation("MatchUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2               Profile   @relation("MatchUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  messages            Message[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  matchId    String
+  senderId   String
+  content    String
+  createdAt  DateTime @default(now())
+  match      Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  sender     Profile  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([matchId])
+  @@index([senderId])
+}
