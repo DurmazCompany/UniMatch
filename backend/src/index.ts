@@ -13,6 +13,7 @@ import { matchesRouter } from "./routes/matches";
 import { campusRouter } from "./routes/campus";
 import { uploadsRouter } from "./routes/uploads";
 import { webhooksRouter } from "./routes/webhooks";
+import { seedRouter } from "./routes/seed";
 
 const app = new Hono<{
   Variables: {
@@ -69,6 +70,7 @@ app.route("/api/matches", matchesRouter);
 app.route("/api/campus", campusRouter);
 app.route("/api/uploads", uploadsRouter);
 app.route("/api/webhooks", webhooksRouter);
+app.route("/api/seed", seedRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

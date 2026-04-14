@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { theme, gradients } from "@/lib/theme";
+import { Calendar } from "lucide-react-native";
 
 const GENDERS = [
   { label: "Erkek", value: "male" },
@@ -157,7 +158,7 @@ export default function Step1Screen() {
               }}
             >
               <Text style={{ color: theme.textPrimary, fontSize: 16 }}>{formattedDate}</Text>
-              <Text style={{ color: theme.textSecondary, fontSize: 14 }}>📅</Text>
+              <Calendar size={18} color={theme.textSecondary} />
             </Pressable>
             {showDatePicker ? (
               <DateTimePicker

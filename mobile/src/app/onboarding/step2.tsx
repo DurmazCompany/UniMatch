@@ -29,8 +29,14 @@ export default function Step2Screen() {
   const [error, setError] = useState("");
 
   const handleNext = () => {
-    if (!university.trim()) { setError("Üniversiteni gir"); return; }
-    if (!department.trim()) { setError("Bölümünü gir"); return; }
+    if (!university.trim() || university.trim().length < 2) {
+      setError("Üniversite adı en az 2 karakter olmalı");
+      return;
+    }
+    if (!department.trim() || department.trim().length < 2) {
+      setError("Bölüm adı en az 2 karakter olmalı");
+      return;
+    }
     if (!year) { setError("Sınıfını seç"); return; }
 
     setOnboarding({

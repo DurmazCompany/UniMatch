@@ -65,6 +65,9 @@ export interface Message {
   matchId: string;
   senderId: string;
   content: string;
+  messageType: "text" | "voice";
+  voiceUrl?: string;
+  voiceDuration?: number;
   createdAt: string;
   sender: Profile;
 }

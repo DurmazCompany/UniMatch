@@ -9,32 +9,33 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useAppStore } from "@/lib/store/app-store";
+import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme, gradients } from "@/lib/theme";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft, Music, Dribbble, Gamepad2, Film, BookOpen, Plane, Camera, UtensilsCrossed, Palette, Dumbbell, Code, PersonStanding } from "lucide-react-native";
 
 const HOBBIES = [
-  { value: "music", label: "Müzik", emoji: "🎵" },
-  { value: "sports", label: "Spor", emoji: "⚽" },
-  { value: "gaming", label: "Oyun", emoji: "🎮" },
-  { value: "movies", label: "Film/Dizi", emoji: "🎬" },
-  { value: "reading", label: "Kitap", emoji: "📚" },
-  { value: "travel", label: "Seyahat", emoji: "✈️" },
-  { value: "photography", label: "Fotoğraf", emoji: "📸" },
-  { value: "cooking", label: "Yemek", emoji: "🍳" },
-  { value: "art", label: "Sanat", emoji: "🎨" },
-  { value: "fitness", label: "Fitness", emoji: "💪" },
-  { value: "coding", label: "Kodlama", emoji: "💻" },
-  { value: "dance", label: "Dans", emoji: "💃" },
+  { value: "music", label: "Muzik", icon: Music },
+  { value: "sports", label: "Spor", icon: Dribbble },
+  { value: "gaming", label: "Oyun", icon: Gamepad2 },
+  { value: "movies", label: "Film/Dizi", icon: Film },
+  { value: "reading", label: "Kitap", icon: BookOpen },
+  { value: "travel", label: "Seyahat", icon: Plane },
+  { value: "photography", label: "Fotograf", icon: Camera },
+  { value: "cooking", label: "Yemek", icon: UtensilsCrossed },
+  { value: "art", label: "Sanat", icon: Palette },
+  { value: "fitness", label: "Fitness", icon: Dumbbell },
+  { value: "coding", label: "Kodlama", icon: Code },
+  { value: "dance", label: "Dans", icon: PersonStanding },
 ];
 
 export default function Step4Screen() {
   const onboarding = useAppStore((s) => s.onboarding);
-  const setOnboarding = useAppStore((s) => s.setOnboarding);
   const resetOnboarding = useAppStore((s) => s.resetOnboarding);
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
   const [error, setError] = useState("");
@@ -59,14 +60,22 @@ export default function Step4Screen() {
     setLoading(true);
     setError("");
     try {
+      // Send arrays directly - backend will convert to JSON for storage
       const payload = {
         ...onboarding,
-        hobbies: JSON.stringify(selectedHobbies),
-        photos: JSON.stringify(onboarding.photos ?? []),
+        hobbies: selectedHobbies,
+        photos: onboarding.photos ?? [],
       };
-      await api.post("/api/profile", payload);
+      const result = await api.post("/api/profile", payload);
+      if (!result) {
+        setError("Profil kaydedilemedi. Lütfen tekrar dene.");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        return;
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.push("/onboarding/step5");
+      await queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      resetOnboarding();
+      router.replace("/(app)");
     } catch {
       setError("Profil kaydedilemedi. Lütfen tekrar dene.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -155,7 +164,7 @@ export default function Step4Screen() {
                   opacity: isDisabled ? 0.4 : 1,
                 }}
               >
-                <Text style={{ fontSize: 18 }}>{hobby.emoji}</Text>
+                <hobby.icon size={18} color={isSelected ? theme.accent : theme.textSecondary} />
                 <Text
                   style={{
                     color: isSelected ? theme.accent : theme.textSecondary,

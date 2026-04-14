@@ -24,10 +24,9 @@ discoverRouter.get("/", async (c) => {
   });
   const swipedIds = swiped.map(s => s.swipedId);
 
-  // Get candidates: same university, not self, not already swiped
+  // Get candidates: all profiles except self and already swiped (no university filter for testing)
   const candidates = await prisma.profile.findMany({
     where: {
-      university: myProfile.university,
       id: { notIn: [myProfile.id, ...swipedIds] },
     },
     take: 20,

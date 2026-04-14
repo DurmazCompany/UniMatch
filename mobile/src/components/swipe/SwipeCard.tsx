@@ -276,7 +276,7 @@ export function SwipeCard({ profile, onSwipe, isTop, index }: SwipeCardProps) {
           </View>
 
           <Text style={{ color: "#8E8E93", fontSize: 15, fontWeight: "400", marginBottom: 12 }}>
-            {profile.department} · {profile.university ?? "Üniversite"}
+            {profile.department} · {profile.university?.name ?? "Üniversite"}
           </Text>
 
           {profile.bio ? (

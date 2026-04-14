@@ -7,7 +7,10 @@ import { notifyMatch } from "./sse";
 import { sendPushNotification } from "../lib/push";
 
 const messageSchema = z.object({
-  content: z.string().min(1).max(500)
+  content: z.string().min(1).max(500),
+  messageType: z.enum(["text", "voice"]).optional().default("text"),
+  voiceUrl: z.string().url().optional(),
+  voiceDuration: z.number().int().min(1).max(300).optional() // Max 5 minutes
 });
 
 export const matchesRouter = new Hono<{
@@ -176,7 +179,7 @@ matchesRouter.post("/:id/messages", async (c) => {
     }, 400);
   }
 
-  const { content } = result.data;
+  const { content, messageType, voiceUrl, voiceDuration } = result.data;
 
   const message = await prisma.message.create({
     data: {
@@ -184,6 +187,9 @@ matchesRouter.post("/:id/messages", async (c) => {
       matchId,
       senderId: profile.id,
       content: content.trim(),
+      messageType: messageType ?? "text",
+      voiceUrl: voiceUrl ?? null,
+      voiceDuration: voiceDuration ?? null,
     },
     include: { sender: true },
   });
@@ -196,9 +202,12 @@ matchesRouter.post("/:id/messages", async (c) => {
   const recipient = await prisma.profile.findUnique({ where: { id: recipientId } });
 
   if (recipient?.pushToken) {
-    const preview = content.trim().length > 50
-      ? content.trim().substring(0, 50) + "..."
-      : content.trim();
+    const isVoice = messageType === "voice";
+    const preview = isVoice
+      ? "Sesli mesaj gonderdi 🎤"
+      : content.trim().length > 50
+        ? content.trim().substring(0, 50) + "..."
+        : content.trim();
     sendPushNotification(
       recipient.pushToken,
       `💬 ${profile.name}`,
@@ -208,4 +217,91 @@ matchesRouter.post("/:id/messages", async (c) => {
   }
 
   return c.json({ data: message });
+});
+
+// POST /api/matches/seed-test - Create test matches for development
+matchesRouter.post("/seed-test", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
+  if (!myProfile) return c.json({ error: { message: "Profile not found" } }, 404);
+
+  // Get other profiles to match with
+  const otherProfiles = await prisma.profile.findMany({
+    where: { userId: { not: user.id } },
+    take: 5,
+  });
+
+  const iceBreakerQuestions = [
+    "Hayalindeki tatil yeri neresi?",
+    "En sevdigin yemek ne?",
+    "Gelecekte kendini nerede goruyorsun?",
+    "Hafta sonu genelde ne yaparsın?",
+    "En son izledigin film ne?",
+  ];
+
+  const sampleMessages = [
+    ["Merhaba! Profilini cok begendim 😊", "Merhaba! Tesekkurler, seninki de cok guzel", "Hangi bolumdusun?"],
+    ["Hey! Fotograflarin cok guzel", "Sagol 😊 Sen nerden katiliyorsun?", "Istanbul'dan, sen?"],
+    ["Muzik zevkin cok iyi!", "Tesekkurler! Konserlere gitmeyi severim", "Ben de bayilirim!"],
+  ];
+
+  const created: string[] = [];
+
+  for (let i = 0; i < Math.min(3, otherProfiles.length); i++) {
+    const partner = otherProfiles[i];
+    if (!partner) continue;
+
+    // Check if match already exists
+    const existingMatch = await prisma.match.findFirst({
+      where: {
+        OR: [
+          { user1Id: myProfile.id, user2Id: partner.id },
+          { user1Id: partner.id, user2Id: myProfile.id },
+        ],
+      },
+    });
+
+    if (existingMatch) {
+      created.push(`Skipped ${partner.name} - already matched`);
+      continue;
+    }
+
+    // Create match
+    const match = await prisma.match.create({
+      data: {
+        user1Id: myProfile.id,
+        user2Id: partner.id,
+        matchedAt: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        iceBreakerQuestion: iceBreakerQuestions[i] ?? "Merhaba!",
+        iceBreakerAccepted: i < 2, // First 2 have accepted icebreaker
+        compatibilityScore: 70 + Math.floor(Math.random() * 25),
+        isActive: true,
+      },
+    });
+
+    // Add messages for first 2 matches
+    if (i < 2) {
+      const messages = sampleMessages[i] ?? [];
+      for (let j = 0; j < messages.length; j++) {
+        const msg = messages[j];
+        if (!msg) continue;
+        await prisma.message.create({
+          data: {
+            matchId: match.id,
+            senderId: j % 2 === 0 ? myProfile.id : partner.id,
+            content: msg,
+            createdAt: new Date(Date.now() - (messages.length - j) * 5 * 60 * 1000),
+          },
+        });
+      }
+      created.push(`Created match with ${partner.name} (${messages.length} messages)`);
+    } else {
+      created.push(`Created match with ${partner.name} (no messages)`);
+    }
+  }
+
+  return c.json({ data: { created, count: created.length } });
 });

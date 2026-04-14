@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme, gradients } from "@/lib/theme";
 import { ChevronLeft } from "lucide-react-native";
 import { authClient } from "@/lib/auth/auth-client";
+import * as FileSystem from "expo-file-system";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL!;
 
@@ -27,31 +28,61 @@ const uploadPhoto = async (uri: string): Promise<string | null> => {
   const mimeType =
     ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
 
-  const formData = new FormData();
-  formData.append("photo", {
-    uri,
-    type: mimeType,
-    name: filename,
-  } as unknown as Blob);
-
   const cookieHeader =
     typeof authClient.getCookie === "function" ? authClient.getCookie() : "";
 
-  // Use global fetch (not expo/fetch) — RN's fetch supports { uri, type, name } FormData parts
-  const response = await global.fetch(`${BACKEND_URL}/api/uploads/photo`, {
-    method: "POST",
-    credentials: "include",
-    headers: cookieHeader ? { Cookie: cookieHeader } : {},
-    body: formData,
-  });
+  try {
+    // For web platform, fetch the blob and create a proper File
+    if (Platform.OS === "web") {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const file = new File([blob], filename, { type: mimeType });
 
-  if (!response.ok) {
-    console.error("Upload failed:", response.status, await response.text());
+      const formData = new FormData();
+      formData.append("photo", file);
+
+      const uploadResponse = await fetch(`${BACKEND_URL}/api/uploads/photo`, {
+        method: "POST",
+        credentials: "include",
+        headers: cookieHeader ? { Cookie: cookieHeader } : {},
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        console.error("Upload failed:", uploadResponse.status, await uploadResponse.text());
+        return null;
+      }
+
+      const json = await uploadResponse.json();
+      return (json as { data?: { url?: string } })?.data?.url ?? null;
+    }
+
+    // For native platforms, use the standard RN FormData approach
+    const formData = new FormData();
+    formData.append("photo", {
+      uri,
+      type: mimeType,
+      name: filename,
+    } as unknown as Blob);
+
+    const uploadResponse = await global.fetch(`${BACKEND_URL}/api/uploads/photo`, {
+      method: "POST",
+      credentials: "include",
+      headers: cookieHeader ? { Cookie: cookieHeader } : {},
+      body: formData,
+    });
+
+    if (!uploadResponse.ok) {
+      console.error("Upload failed:", uploadResponse.status, await uploadResponse.text());
+      return null;
+    }
+
+    const json = await uploadResponse.json();
+    return (json as { data?: { url?: string } })?.data?.url ?? null;
+  } catch (error) {
+    console.error("Upload error:", error);
     return null;
   }
-
-  const json = await response.json();
-  return (json as { data?: { url?: string } })?.data?.url ?? null;
 };
 
 export default function Step3Screen() {

@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { theme, gradients } from "@/lib/theme";
-import { Heart } from "lucide-react-native";
+import { Heart, GraduationCap, Sparkles } from "lucide-react-native";
 
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
@@ -65,7 +65,7 @@ export default function WelcomeScreen() {
             marginBottom: 12,
           }}
         >
-          CampusMatch
+          UniMatch
         </Text>
 
         {/* Tagline */}
@@ -84,16 +84,16 @@ export default function WelcomeScreen() {
         {/* Features */}
         <View style={{ marginTop: 48, gap: 16 }}>
           <FeatureItem
-            icon="🎓"
-            text="Sadece üniversite öğrencileri"
+            icon={<GraduationCap size={20} color={theme.primary} />}
+            text="Sadece universite ogrencileri"
           />
           <FeatureItem
-            icon="💫"
-            text="Üniversite öğrencileri ile eşleş"
+            icon={<Sparkles size={20} color={theme.primary} />}
+            text="Universite ogrencileri ile esles"
           />
           <FeatureItem
-            icon="❤️"
-            text="Gerçek ilişkiler kur"
+            icon={<Heart size={20} color={theme.primary} />}
+            text="Gercek iliskiler kur"
           />
         </View>
       </View>
@@ -174,7 +174,7 @@ export default function WelcomeScreen() {
   );
 }
 
-function FeatureItem({ icon, text }: { icon: string; text: string }) {
+function FeatureItem({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <View
       style={{
@@ -183,7 +183,7 @@ function FeatureItem({ icon, text }: { icon: string; text: string }) {
         gap: 12,
       }}
     >
-      <Text style={{ fontSize: 20 }}>{icon}</Text>
+      {icon}
       <Text
         style={{
           color: theme.textSecondary,

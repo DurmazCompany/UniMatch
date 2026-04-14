@@ -8,25 +8,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.vibecode.app",
-      "infoPlist": {
-        "NSCameraUsageDescription": "Profilini doğrulamak için selfie çekmen gerekiyor.",
-        "NSPhotoLibraryUsageDescription": "Profiline fotoğraf eklemek için galerine erişmemiz gerekiyor."
-      }
+      "supportsTablet": true
     },
     "android": {
-      "package": "com.vibecode.app",
-      "edgeToEdgeEnabled": true,
-      "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+      "edgeToEdgeEnabled": true
     },
-    "plugins": [
-      "expo-router"
-    ],
+    "plugins": ["expo-router"],
     "experiments": {
       "typedRoutes": true
     }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -22,6 +22,7 @@ import { initRevenueCat } from "@/lib/revenue-cat";
 import {
   registerForPushNotifications,
   addNotificationResponseListener,
+  addNotificationListener,
   clearBadgeCount,
 } from "@/lib/notifications";
 import type { Subscription } from "expo-notifications";
@@ -50,7 +51,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
         <View style={{ flex: 1, backgroundColor: "#0D0D0D", alignItems: "center", justifyContent: "center", padding: 40 }}>
           <Text style={{ color: "#fff", fontSize: 24, fontWeight: "700", marginBottom: 12 }}>Bir şeyler ters gitti.</Text>
           <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 24 }}>Uygulama beklenmedik bir hata ile karşılaştı.</Text>
-          <Pressable onPress={() => router.replace("/")} style={{ paddingHorizontal: 20, paddingVertical: 10, backgroundColor: "#E8445A", borderRadius: 8 }}>
+          <Pressable onPress={() => this.setState({ hasError: false })} style={{ paddingHorizontal: 20, paddingVertical: 10, backgroundColor: "#E8445A", borderRadius: 8 }}>
             <Text style={{ color: "#fff", fontWeight: "600" }}>Tekrar Dene</Text>
           </Pressable>
         </View>
@@ -110,6 +111,8 @@ function RootLayoutNav() {
         foregroundListener.remove();
       };
     }
+  }, [session?.user?.id, router]);
+
   // Redirect based on session state
   useEffect(() => {
     if (isLoading) return;
@@ -159,6 +162,7 @@ function RootLayoutNav() {
   );
 }
 
+// Root Layout Component
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Syne_700Bold,

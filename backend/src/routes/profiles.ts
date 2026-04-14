@@ -8,11 +8,11 @@ import { calculateProfilePower } from "../lib/profile-power";
 const profileSchema = z.object({
   name: z.string().min(2).max(50),
   birthDate: z.string().refine(val => !isNaN(Date.parse(val)), "Invalid date"),
-  gender: z.enum(["Erkek", "Kadın", "Diğer"]),
+  gender: z.enum(["Erkek", "Kadın", "Diğer", "male", "female", "other"]),
   department: z.string().min(2).max(100),
   year: z.number().int().min(1).max(6),
   bio: z.string().max(200).optional(),
-  photos: z.array(z.string().url()).min(2).max(6),
+  photos: z.array(z.string()).min(2).max(6),
   hobbies: z.array(z.string()).min(1).max(5),
   university: z.string().min(2).max(100),
   selfieVerified: z.boolean().optional()
@@ -43,9 +43,12 @@ profilesRouter.post("/", async (c) => {
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
 
   const body = await c.req.json();
+  console.log("Profile POST body:", JSON.stringify(body, null, 2));
+
   const result = profileSchema.safeParse(body);
 
   if (!result.success) {
+    console.log("Profile validation failed:", JSON.stringify(result.error.issues, null, 2));
     return c.json({
       error: {
         message: "Validation failed",
