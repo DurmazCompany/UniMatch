@@ -106,6 +106,81 @@ uploadsRouter.post("/photo", async (c) => {
   }
 });
 
+// POST /api/uploads/image - Upload an image for chat (accepts `file` field)
+uploadsRouter.post("/image", async (c) => {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+  }
+
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get("file") as File | null;
+
+    if (!file || !(file instanceof File)) {
+      return c.json({ error: { message: "No image file provided", code: "NO_FILE" } }, 400);
+    }
+
+    // Validate file type
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return c.json({
+        error: {
+          message: "Invalid file type. Allowed: jpg, jpeg, png, webp",
+          code: "INVALID_TYPE"
+        }
+      }, 400);
+    }
+
+    // Validate file size
+    if (file.size > MAX_SIZE) {
+      return c.json({
+        error: {
+          message: "File too large. Maximum size is 5MB",
+          code: "FILE_TOO_LARGE"
+        }
+      }, 400);
+    }
+
+    const originalName = file.name || "image.jpg";
+    const ext = path.extname(originalName).toLowerCase() || ".jpg";
+
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return c.json({
+        error: {
+          message: "Invalid file extension. Allowed: jpg, jpeg, png, webp",
+          code: "INVALID_EXTENSION"
+        }
+      }, 400);
+    }
+
+    const filename = `chat_${randomUUID()}${ext}`;
+    const filepath = path.join(UPLOAD_DIR, filename);
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    await writeFile(filepath, buffer);
+
+    const url = `${env.BACKEND_URL}/api/uploads/${filename}`;
+
+    return c.json({
+      data: {
+        filename,
+        url,
+        size: file.size,
+        type: file.type
+      }
+    });
+  } catch (error) {
+    console.error("Image upload error:", error);
+    return c.json({
+      error: {
+        message: "Failed to upload image",
+        code: "UPLOAD_FAILED"
+      }
+    }, 500);
+  }
+});
+
 // POST /api/uploads/voice - Upload a voice message
 uploadsRouter.post("/voice", async (c) => {
   const user = c.get("user");

@@ -1,28 +1,29 @@
 import { Hono } from "hono";
 import { prisma } from "../prisma";
 import { randomUUID } from "crypto";
+import { extractUniversityInfo } from "../lib/university";
 
 export const universitiesRouter = new Hono();
 
 // Seed universities if they don't exist
 const SEED_UNIVERSITIES = [
-  { name: "Boğaziçi Üniversitesi", emailDomain: "boun.edu.tr" },
-  { name: "Orta Doğu Teknik Üniversitesi (ODTÜ)", emailDomain: "metu.edu.tr" },
-  { name: "İstanbul Teknik Üniversitesi (İTÜ)", emailDomain: "itu.edu.tr" },
-  { name: "Hacettepe Üniversitesi", emailDomain: "hacettepe.edu.tr" },
-  { name: "Ankara Üniversitesi", emailDomain: "ankara.edu.tr" },
-  { name: "İstanbul Üniversitesi", emailDomain: "istanbul.edu.tr" },
-  { name: "Sabancı Üniversitesi", emailDomain: "sabanciuniv.edu" },
-  { name: "Koç Üniversitesi", emailDomain: "ku.edu.tr" },
-  { name: "Bilkent Üniversitesi", emailDomain: "bilkent.edu.tr" },
-  { name: "Yıldız Teknik Üniversitesi", emailDomain: "yildiz.edu.tr" },
+  { displayName: "Boğaziçi Üniversitesi", slug: "boun", emailDomain: "boun.edu.tr" },
+  { displayName: "Orta Doğu Teknik Üniversitesi (ODTÜ)", slug: "metu", emailDomain: "metu.edu.tr" },
+  { displayName: "İstanbul Teknik Üniversitesi (İTÜ)", slug: "itu", emailDomain: "itu.edu.tr" },
+  { displayName: "Hacettepe Üniversitesi", slug: "hacettepe", emailDomain: "hacettepe.edu.tr" },
+  { displayName: "Ankara Üniversitesi", slug: "ankara", emailDomain: "ankara.edu.tr" },
+  { displayName: "İstanbul Üniversitesi", slug: "istanbul", emailDomain: "istanbul.edu.tr" },
+  { displayName: "Sabancı Üniversitesi", slug: "sabanciuniv", emailDomain: "sabanciuniv.edu" },
+  { displayName: "Koç Üniversitesi", slug: "ku", emailDomain: "ku.edu.tr" },
+  { displayName: "Bilkent Üniversitesi", slug: "bilkent", emailDomain: "bilkent.edu.tr" },
+  { displayName: "Yıldız Teknik Üniversitesi", slug: "yildiz", emailDomain: "yildiz.edu.tr" },
 ];
 
 async function seedUniversities() {
   for (const u of SEED_UNIVERSITIES) {
     await prisma.university.upsert({
       where: { emailDomain: u.emailDomain },
-      update: {},
+      update: { displayName: u.displayName, slug: u.slug },
       create: { id: randomUUID(), ...u },
     });
   }
@@ -30,6 +31,6 @@ async function seedUniversities() {
 seedUniversities().catch(console.error);
 
 universitiesRouter.get("/", async (c) => {
-  const universities = await prisma.university.findMany({ orderBy: { name: "asc" } });
+  const universities = await prisma.university.findMany({ orderBy: { displayName: "asc" } });
   return c.json({ data: universities });
 });

@@ -61,20 +61,21 @@ model Verification {
   updatedAt  DateTime @updatedAt
 }
 
-// University reference table (for future use, not linked to profiles)
 model University {
   id          String    @id @default(cuid())
-  name        String
-  emailDomain String    @unique
+  displayName String    // "Yeditepe Üniversitesi"
+  slug        String    @unique  // "yeditepe"
+  emailDomain String    @unique  // "yeditepe.edu.tr"
   logoUrl     String?
   createdAt   DateTime  @default(now())
+  profiles    Profile[]
 }
 
 model Profile {
   id                String    @id @default(cuid())
   userId            String    @unique
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  university        String    // User-entered university name
+  university        String    // User-entered university name / display string
   name              String
   birthDate         DateTime
   gender            String    // "male", "female", "other"
@@ -96,14 +97,22 @@ model Profile {
   isPremium         Boolean   @default(false)
   premiumUntil      DateTime?
   pushToken         String?   // Expo push notification token
+  universityId      String?
+  universityRef     University? @relation(fields: [universityId], references: [id])
+  role              String    @default("user")   // "user" | "ambassador" | "admin"
+  referralCode      String    @default("")       // auto-generated on first profile create
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  sentSwipes        Swipe[]   @relation("SwiperProfile")
-  receivedSwipes    Swipe[]   @relation("SwipedProfile")
-  matchesAsUser1    Match[]   @relation("MatchUser1")
-  matchesAsUser2    Match[]   @relation("MatchUser2")
-  sentMessages      Message[]
+  sentSwipes          Swipe[]           @relation("SwiperProfile")
+  receivedSwipes      Swipe[]           @relation("SwipedProfile")
+  matchesAsUser1      Match[]           @relation("MatchUser1")
+  matchesAsUser2      Match[]           @relation("MatchUser2")
+  sentMessages        Message[]
+  createdEvents       Event[]           @relation("EventCreator")
+  eventParticipations EventParticipant[]
+  referralsSent       Referral[]        @relation("ReferralInviter")
+  referralsReceived   Referral[]        @relation("ReferralInvited")
 }
 
 model Swipe {
@@ -151,4 +160,41 @@ model Message {
 
   @@index([matchId])
   @@index([senderId])
+}
+
+model Event {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  date         DateTime
+  location     String
+  createdById  String
+  createdBy    Profile   @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  university   String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  participants EventParticipant[]
+}
+
+model EventParticipant {
+  id        String   @id @default(cuid())
+  eventId   String
+  profileId String
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, profileId])
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  inviterId   String
+  invitedId   String
+  rewardGiven Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  inviter     Profile  @relation("ReferralInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  invited     Profile  @relation("ReferralInvited", fields: [invitedId], references: [id], onDelete: Cascade)
+
+  @@unique([invitedId])
 }

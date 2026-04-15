@@ -147,6 +147,14 @@ function RootLayoutNav() {
               <>
                 <Stack.Screen name="(app)" />
                 <Stack.Screen name="onboarding" />
+                <Stack.Screen
+                  name="paywall"
+                  options={{ presentation: "modal", headerShown: false }}
+                />
+                <Stack.Screen
+                  name="create-event"
+                  options={{ presentation: "modal", headerShown: false, animation: "slide_from_bottom" }}
+                />
               </>
             ) : (
               <>

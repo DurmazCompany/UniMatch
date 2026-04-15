@@ -4,6 +4,8 @@ import { prisma } from "../prisma";
 import { auth } from "../auth";
 import { randomUUID } from "crypto";
 import { calculateProfilePower } from "../lib/profile-power";
+import { findOrCreateUniversity } from "../lib/university";
+import { sendPushNotification } from "../lib/push";
 
 const profileSchema = z.object({
   name: z.string().min(2).max(50),
@@ -30,11 +32,52 @@ profilesRouter.get("/", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
 
-  const profile = await prisma.profile.findUnique({
-    where: { userId: user.id },
-  });
+  try {
+    const profileWithMatches = await prisma.profile.findUnique({
+      where: { userId: user.id },
+      include: {
+        matchesAsUser1: { select: { isActive: true } },
+        matchesAsUser2: { select: { isActive: true } },
+        universityRef: true,
+      },
+    });
 
-  return c.json({ data: profile });
+    if (!profileWithMatches) {
+      return c.json({ data: null });
+    }
+
+    // Streak danger notification: user has a streak but hasn't reached 5 swipes today
+    // and it's been 20+ hours since last streak update — fire when app is opened
+    if (profileWithMatches.streakCount > 0 && profileWithMatches.pushToken) {
+      const now = new Date();
+      const lastStreakTime = profileWithMatches.lastStreakDate
+        ? new Date(profileWithMatches.lastStreakDate)
+        : null;
+      const hoursSinceStreak = lastStreakTime
+        ? (now.getTime() - lastStreakTime.getTime()) / (1000 * 60 * 60)
+        : 999;
+
+      const todayStr = now.toDateString();
+      const lastStreakDay = lastStreakTime ? lastStreakTime.toDateString() : null;
+      const hasReachedStreakToday = lastStreakDay === todayStr;
+
+      if (!hasReachedStreakToday && hoursSinceStreak >= 20) {
+        sendPushNotification(
+          profileWithMatches.pushToken,
+          "Atesin sonmek uzere!",
+          `${profileWithMatches.streakCount} gunluk serini korumak icin bugun 5 swipe yap!`,
+          { type: "streak_danger" }
+        );
+      }
+    }
+
+    // Return profile data (exclude relation arrays, include universityRef)
+    const { matchesAsUser1: _u1, matchesAsUser2: _u2, ...profileData } = profileWithMatches;
+    return c.json({ data: profileData });
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    return c.json({ error: { message: "Internal server error" } }, 500);
+  }
 });
 
 // POST /api/profile - create or update profile
@@ -114,6 +157,24 @@ profilesRouter.post("/", async (c) => {
       profilePower: power,
     },
   });
+
+  // Auto-detect university from email
+  try {
+    const universityRecord = await findOrCreateUniversity(user.email);
+    const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    await prisma.profile.update({
+      where: { id: created.id },
+      data: {
+        universityId: universityRecord.id,
+        university: universityRecord.displayName,
+        referralCode,
+      },
+    });
+  } catch (e) {
+    // non-fatal: university detection failure shouldn't block profile creation
+    console.error("University detection failed:", e);
+  }
+
   return c.json({ data: created });
 });
 

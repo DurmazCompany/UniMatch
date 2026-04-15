@@ -73,6 +73,14 @@ export default function Step4Screen() {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Apply referral code if provided during sign-up
+      if (onboarding.referralCode) {
+        try {
+          await api.post("/api/referrals/use", { code: onboarding.referralCode });
+        } catch {
+          // Ignore referral errors — profile was created successfully
+        }
+      }
       await queryClient.invalidateQueries({ queryKey: ["my-profile"] });
       resetOnboarding();
       router.replace("/(app)");

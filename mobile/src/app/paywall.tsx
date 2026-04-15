@@ -5,12 +5,20 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { theme } from "@/lib/theme";
+import {
+  getOfferings,
+  purchasePackage,
+  restorePurchases,
+  PurchasesPackage,
+} from "@/lib/revenue-cat";
 import {
   X,
   Crown,
@@ -32,6 +40,7 @@ interface PackageFeature {
 
 interface PackageTier {
   id: string;
+  storeIdentifier: string | null;
   name: string;
   price: string;
   period: string;
@@ -39,11 +48,14 @@ interface PackageTier {
   isRecommended?: boolean;
   accentColor: string;
   features: PackageFeature[];
+  _rcPackage?: PurchasesPackage;
 }
 
-const PACKAGES: PackageTier[] = [
+// Static tier definitions — prices are overridden by RevenueCat at runtime
+const TIER_DEFINITIONS: PackageTier[] = [
   {
     id: "crush",
+    storeIdentifier: null,
     name: "Crush",
     price: "Ucretsiz",
     period: "",
@@ -59,6 +71,7 @@ const PACKAGES: PackageTier[] = [
   },
   {
     id: "flort",
+    storeIdentifier: "crush_monthly",
     name: "Flort",
     price: "49.99",
     period: "/ay",
@@ -74,6 +87,7 @@ const PACKAGES: PackageTier[] = [
   },
   {
     id: "ask",
+    storeIdentifier: "lover_yearly",
     name: "Ask",
     price: "99.99",
     period: "/ay",
@@ -300,7 +314,7 @@ function PackageCard({
               <Pressable
                 testID={`select-${pkg.id}-button`}
                 onPress={() => onSelect(pkg.id)}
-                disabled={loading && isSelected}
+                disabled={!!(loading && isSelected)}
                 style={{ marginTop: 16 }}
               >
                 <LinearGradient
@@ -343,26 +357,86 @@ function PackageCard({
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
-  const handleSelectPackage = async (packageId: string) => {
+  // Fetch live offerings from RevenueCat
+  const { data: rcPackages, isLoading: loadingOfferings } = useQuery({
+    queryKey: ["revenuecat-offerings"],
+    queryFn: getOfferings,
+  });
+
+  // Build display tiers by merging static definitions with live RC prices
+  const packages: PackageTier[] = TIER_DEFINITIONS.map((tier) => {
+    if (tier.isFree || tier.storeIdentifier === null) return tier;
+    const rcPkg = rcPackages?.find(
+      (p: PurchasesPackage) => p.product.identifier === tier.storeIdentifier
+    );
+    if (rcPkg) {
+      return { ...tier, price: rcPkg.product.priceString, _rcPackage: rcPkg };
+    }
+    return tier;
+  });
+
+  // Purchase mutation
+  const purchaseMutation = useMutation({
+    mutationFn: (pkg: PurchasesPackage) => purchasePackage(pkg),
+    onSuccess: (customerInfo) => {
+      if (customerInfo) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.back();
+      }
+    },
+    onError: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setPurchaseError("Satin alma basarisiz oldu. Lutfen tekrar deneyin.");
+    },
+  });
+
+  // Restore purchases mutation
+  const restoreMutation = useMutation({
+    mutationFn: restorePurchases,
+    onSuccess: (isPremium) => {
+      if (isPremium) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.back();
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setPurchaseError("Geri yuklenecek satin alma bulunamadi.");
+      }
+    },
+    onError: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setPurchaseError("Geri yukleme basarisiz oldu.");
+    },
+  });
+
+  const handleSelectPackage = (packageId: string) => {
     if (packageId === "crush") {
-      // Free tier - just close
+      // Free tier — just close
       router.back();
       return;
     }
 
-    setSelectedPackage(packageId);
-    setLoading(true);
+    setPurchaseError(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedPackage(packageId);
 
-    // TODO: Integrate with RevenueCat for actual purchases
-    setTimeout(() => {
-      setLoading(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.back();
-    }, 1500);
+    const tier = packages.find((p) => p.id === packageId);
+    const rcPkg = tier?._rcPackage;
+    if (rcPkg) {
+      purchaseMutation.mutate(rcPkg);
+    } else {
+      setPurchaseError("Bu paket su an mevcut degil. Lutfen daha sonra tekrar deneyin.");
+    }
   };
+
+  const handleRestore = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setPurchaseError(null);
+    restoreMutation.mutate();
+  };
+
+  const isPurchasing = purchaseMutation.isPending;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -443,31 +517,148 @@ export default function PaywallScreen() {
           </Text>
         </View>
 
-        {/* Package Cards */}
-        {PACKAGES.map((pkg) => (
-          <PackageCard
-            key={pkg.id}
-            pkg={pkg}
-            onSelect={handleSelectPackage}
-            loading={loading}
-            selectedId={selectedPackage}
-          />
-        ))}
+        {/* Loading state for offerings */}
+        {loadingOfferings ? (
+          <View style={{ alignItems: "center", paddingVertical: 32 }} testID="offerings-loading">
+            <ActivityIndicator color={theme.primary} size="large" />
+            <Text
+              style={{
+                color: theme.textSecondary,
+                fontSize: 14,
+                marginTop: 12,
+                fontFamily: "PlusJakartaSans_400Regular",
+              }}
+            >
+              Fiyatlar yukleniyor...
+            </Text>
+          </View>
+        ) : (
+          packages.map((pkg) => (
+            <PackageCard
+              key={pkg.id}
+              pkg={pkg}
+              onSelect={handleSelectPackage}
+              loading={isPurchasing}
+              selectedId={selectedPackage}
+            />
+          ))
+        )}
 
-        {/* Terms */}
-        <Text
+        {/* Error message */}
+        {purchaseError !== null ? (
+          <View
+            style={{
+              backgroundColor: "rgba(239, 68, 68, 0.1)",
+              borderRadius: 12,
+              padding: 12,
+              marginBottom: 16,
+            }}
+            testID="purchase-error"
+          >
+            <Text
+              style={{
+                color: theme.error ?? "#EF4444",
+                fontSize: 14,
+                textAlign: "center",
+                fontFamily: "PlusJakartaSans_400Regular",
+              }}
+            >
+              {purchaseError}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Restore purchases */}
+        <Pressable
+          onPress={handleRestore}
+          disabled={restoreMutation.isPending}
+          testID="restore-purchases-button"
+          style={({ pressed }) => ({
+            alignItems: "center",
+            opacity: pressed || restoreMutation.isPending ? 0.7 : 1,
+            paddingVertical: 12,
+            marginTop: 4,
+          })}
+        >
+          {restoreMutation.isPending ? (
+            <ActivityIndicator color={theme.textSecondary} size="small" />
+          ) : (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <RotateCcw size={16} color={theme.textSecondary} />
+              <Text
+                style={{
+                  color: theme.textSecondary,
+                  fontSize: 14,
+                  fontFamily: "PlusJakartaSans_400Regular",
+                }}
+              >
+                Satin almalari geri yukle
+              </Text>
+            </View>
+          )}
+        </Pressable>
+
+        {/* App Store compliance terms */}
+        <View
           style={{
-            color: theme.textPlaceholder,
-            fontSize: 11,
-            textAlign: "center",
-            marginTop: 8,
-            lineHeight: 16,
-            fontFamily: "PlusJakartaSans_400Regular",
+            marginTop: 12,
+            paddingTop: 16,
+            borderTopWidth: 1,
+            borderTopColor: "rgba(255,255,255,0.08)",
           }}
         >
-          Abonelik otomatik olarak yenilenir. Istediginiz zaman iptal
-          edebilirsiniz.{"\n"}Kullanim kosullari ve gizlilik politikasi gecerlidir.
-        </Text>
+          <Text
+            style={{
+              color: theme.textPlaceholder,
+              fontSize: 11,
+              textAlign: "center",
+              marginTop: 8,
+              lineHeight: 16,
+              fontFamily: "PlusJakartaSans_400Regular",
+            }}
+          >
+            Abonelik otomatik olarak yenilenir. Mevcut donem bitmeden en az 24 saat once iptal etmezseniz otomatik olarak yenilenir. Odeme Apple ID hesabinizdan alinir.
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "center",
+              gap: 16,
+              marginTop: 10,
+            }}
+          >
+            <Pressable
+              onPress={() => Linking.openURL("https://example.com/terms")}
+              testID="terms-link"
+            >
+              <Text
+                style={{
+                  color: theme.primary,
+                  fontSize: 12,
+                  textDecorationLine: "underline",
+                  fontFamily: "PlusJakartaSans_400Regular",
+                }}
+              >
+                Kullanim Kosullari
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => Linking.openURL("https://example.com/privacy")}
+              testID="privacy-link"
+            >
+              <Text
+                style={{
+                  color: theme.primary,
+                  fontSize: 12,
+                  textDecorationLine: "underline",
+                  fontFamily: "PlusJakartaSans_400Regular",
+                }}
+              >
+                Gizlilik Politikasi
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import * as SecureStore from "expo-secure-store";
 import {
   View,
   Text,
@@ -26,6 +27,12 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    SecureStore.getItemAsync("campusmatch_last_email").then((saved) => {
+      if (saved) setEmail(saved);
+    });
+  }, []);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -58,6 +65,7 @@ export default function SignInScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await SecureStore.setItemAsync("campusmatch_last_email", email.trim().toLowerCase());
         await invalidateSession();
         router.replace("/(app)");
       }

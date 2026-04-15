@@ -12,6 +12,7 @@ interface OnboardingData {
   bio: string;
   selfiePhoto: string;
   selfieVerified: boolean;
+  referralCode?: string;
 }
 
 interface AppStore {

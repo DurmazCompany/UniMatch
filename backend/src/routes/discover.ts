@@ -24,31 +24,72 @@ discoverRouter.get("/", async (c) => {
   });
   const swipedIds = swiped.map(s => s.swipedId);
 
-  // Get candidates: all profiles except self and already swiped (no university filter for testing)
+  // Build candidate filter — apply university filter if the user has a universityId
+  const excludeIds = [myProfile.id, ...swipedIds];
+
   const candidates = await prisma.profile.findMany({
     where: {
-      id: { notIn: [myProfile.id, ...swipedIds] },
+      id: { notIn: excludeIds },
+      ...(myProfile.universityId ? { universityId: myProfile.universityId } : {}),
     },
     take: 20,
     orderBy: { profilePower: "desc" },
   });
 
-  // Calculate compatibility score for each candidate
-  const scored = candidates.map(candidate => {
-    // Use lastSwipeDate for activity calculation, falling back to updatedAt
-    const activityDate = candidate.lastSwipeDate ?? candidate.updatedAt;
-    const compatibilityScore = calculateCompatibility(
-      { hobbies: myProfile.hobbies, university: myProfile.university },
-      {
-        hobbies: candidate.hobbies,
-        university: candidate.university,
-        profilePower: candidate.profilePower,
-        updatedAt: activityDate,
-      }
-    );
+  // Determine events the current user has joined this week
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
 
-    return { ...candidate, compatibilityScore };
+  const myParticipations = await prisma.eventParticipant.findMany({
+    where: {
+      profileId: myProfile.id,
+      event: {
+        date: { gte: weekAgo },
+        isActive: true,
+      },
+    },
+    select: { eventId: true },
   });
+  const myEventIds = new Set(myParticipations.map(p => p.eventId));
+
+  // Calculate compatibility score for each candidate
+  const scored = await Promise.all(
+    candidates.map(async candidate => {
+      // Use lastSwipeDate for activity calculation, falling back to updatedAt
+      const activityDate = candidate.lastSwipeDate ?? candidate.updatedAt;
+      let compatibilityScore = calculateCompatibility(
+        { hobbies: myProfile.hobbies, university: myProfile.university },
+        {
+          hobbies: candidate.hobbies,
+          university: candidate.university,
+          profilePower: candidate.profilePower,
+          updatedAt: activityDate,
+        }
+      );
+
+      // Event boost: +15 per shared event this week
+      if (myEventIds.size > 0) {
+        const sharedParticipations = await prisma.eventParticipant.findMany({
+          where: {
+            profileId: candidate.id,
+            eventId: { in: Array.from(myEventIds) },
+          },
+          select: { eventId: true },
+        });
+        compatibilityScore += sharedParticipations.length * 15;
+      }
+
+      // Campus boost: +10 if candidate is on campus today
+      if (candidate.isOnCampusToday) {
+        compatibilityScore += 10;
+      }
+
+      // Cap at 100
+      compatibilityScore = Math.min(100, compatibilityScore);
+
+      return { ...candidate, compatibilityScore };
+    })
+  );
 
   scored.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
   return c.json({ data: scored });

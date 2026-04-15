@@ -1,14 +1,16 @@
 export interface University {
   id: string;
-  name: string;
+  displayName: string;
+  slug: string;
   emailDomain: string;
 }
 
 export interface Profile {
   id: string;
   userId: string;
-  universityId: string;
-  university: University;
+  universityId?: string;
+  universityRef?: University | null;
+  university: string;
   name: string;
   birthDate: string;
   gender: string;
@@ -23,6 +25,8 @@ export interface Profile {
   profilePower: number;
   streakCount: number;
   swipesToday: number;
+  role?: string;
+  referralCode?: string;
   isOnCampusToday: boolean;
   compatibilityScore?: number;
   isPremium?: boolean;
@@ -65,7 +69,7 @@ export interface Message {
   matchId: string;
   senderId: string;
   content: string;
-  messageType: "text" | "voice";
+  messageType: "text" | "voice" | "photo" | "ephemeral_photo";
   voiceUrl?: string;
   voiceDuration?: number;
   createdAt: string;

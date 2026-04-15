@@ -14,6 +14,9 @@ import { campusRouter } from "./routes/campus";
 import { uploadsRouter } from "./routes/uploads";
 import { webhooksRouter } from "./routes/webhooks";
 import { seedRouter } from "./routes/seed";
+import { sseRouter } from "./routes/sse";
+import { eventsRouter } from "./routes/events";
+import { referralsRouter } from "./routes/referrals";
 
 const app = new Hono<{
   Variables: {
@@ -71,6 +74,9 @@ app.route("/api/campus", campusRouter);
 app.route("/api/uploads", uploadsRouter);
 app.route("/api/webhooks", webhooksRouter);
 app.route("/api/seed", seedRouter);
+app.route("/api/sse", sseRouter);
+app.route("/api/events", eventsRouter);
+app.route("/api/referrals", referralsRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

@@ -7,8 +7,8 @@ import { notifyMatch } from "./sse";
 import { sendPushNotification } from "../lib/push";
 
 const messageSchema = z.object({
-  content: z.string().min(1).max(500),
-  messageType: z.enum(["text", "voice"]).optional().default("text"),
+  content: z.string().min(1).max(2000),
+  messageType: z.enum(["text", "voice", "photo", "ephemeral_photo"]).optional().default("text"),
   voiceUrl: z.string().url().optional(),
   voiceDuration: z.number().int().min(1).max(300).optional() // Max 5 minutes
 });
@@ -202,12 +202,16 @@ matchesRouter.post("/:id/messages", async (c) => {
   const recipient = await prisma.profile.findUnique({ where: { id: recipientId } });
 
   if (recipient?.pushToken) {
-    const isVoice = messageType === "voice";
-    const preview = isVoice
-      ? "Sesli mesaj gonderdi 🎤"
-      : content.trim().length > 50
-        ? content.trim().substring(0, 50) + "..."
-        : content.trim();
+    const preview =
+      messageType === "voice"
+        ? "Sesli mesaj gonderdi 🎤"
+        : messageType === "photo"
+          ? "Fotoğraf gönderdi 📷"
+          : messageType === "ephemeral_photo"
+            ? "Bir kez görüntülenebilir fotoğraf 🔥"
+            : content.trim().length > 50
+              ? content.trim().substring(0, 50) + "..."
+              : content.trim();
     sendPushNotification(
       recipient.pushToken,
       `💬 ${profile.name}`,

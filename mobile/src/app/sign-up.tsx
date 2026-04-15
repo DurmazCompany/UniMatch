@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -13,10 +13,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { authClient } from "@/lib/auth/auth-client";
 import { useInvalidateSession } from "@/lib/auth/use-session";
+import { useAppStore } from "@/lib/store/app-store";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme, gradients } from "@/lib/theme";
-import { ChevronLeft, Eye, EyeOff } from "lucide-react-native";
+import { ChevronLeft, Eye, EyeOff, Gift } from "lucide-react-native";
 
 const isUniversityEmail = (email: string) => {
   return email.includes(".edu");
@@ -30,6 +31,8 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const [showReferral, setShowReferral] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,6 +40,7 @@ export default function SignUpScreen() {
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const invalidateSession = useInvalidateSession();
+  const setOnboarding = useAppStore((s) => s.setOnboarding);
 
   const handleSignUp = async () => {
     setError("");
@@ -72,6 +76,9 @@ export default function SignUpScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (referralCode.trim()) {
+          setOnboarding({ referralCode: referralCode.trim() });
+        }
         await invalidateSession();
         router.replace("/(app)");
       }
@@ -340,6 +347,42 @@ export default function SignUpScreen() {
               </Text>
             ) : null}
           </View>
+
+          {/* Referral Code (optional collapsible) */}
+          <Pressable
+            onPress={() => setShowReferral(!showReferral)}
+            testID="toggle-referral"
+            style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12, marginTop: 4 }}
+          >
+            <Gift size={16} color={theme.textSecondary} />
+            <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+              Davet kodun var mı?
+            </Text>
+          </Pressable>
+          {showReferral ? (
+            <View style={{ marginBottom: 20 }}>
+              <TextInput
+                value={referralCode}
+                onChangeText={(t) => setReferralCode(t.toUpperCase())}
+                placeholder="Örn. ABC123"
+                placeholderTextColor={theme.textPlaceholder}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                testID="referral-code-input"
+                style={{
+                  backgroundColor: theme.surface,
+                  borderWidth: 1.5,
+                  borderColor: theme.borderDefault,
+                  borderRadius: 14,
+                  paddingHorizontal: 20,
+                  paddingVertical: 16,
+                  color: theme.textPrimary,
+                  fontSize: 17,
+                  letterSpacing: 3,
+                }}
+              />
+            </View>
+          ) : null}
 
           {/* Error Message */}
           {error ? (

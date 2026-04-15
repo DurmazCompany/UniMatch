@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useAppStore } from "@/lib/store/app-store";
+import { useSession } from "@/lib/auth/use-session";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme, gradients } from "@/lib/theme";
@@ -18,21 +19,27 @@ import { ChevronLeft } from "lucide-react-native";
 
 const YEARS = [1, 2, 3, 4, 5, 6];
 
+function extractUniversityName(email: string): string {
+  const rawDomain = email.split("@")[1]?.toLowerCase() ?? "";
+  const parts = rawDomain.split(".");
+  const SKIP = new Set(["std", "ogr", "mail", "student", "ogrenci", "edu", "tr", "com", "ac", "uk"]);
+  const meaningful = parts.filter((p) => !SKIP.has(p));
+  const slugRaw = meaningful[0] ?? parts[0] ?? "universite";
+  return slugRaw.charAt(0).toUpperCase() + slugRaw.slice(1) + " Üniversitesi";
+}
+
 export default function Step2Screen() {
   const setOnboarding = useAppStore((s) => s.setOnboarding);
   const insets = useSafeAreaInsets();
+  const { data: session } = useSession();
+  const detectedUniversity = extractUniversityName(session?.user?.email ?? "");
 
-  const [university, setUniversity] = useState("");
   const [department, setDepartment] = useState("");
   const [year, setYear] = useState(0);
   const [bio, setBio] = useState("");
   const [error, setError] = useState("");
 
   const handleNext = () => {
-    if (!university.trim() || university.trim().length < 2) {
-      setError("Üniversite adı en az 2 karakter olmalı");
-      return;
-    }
     if (!department.trim() || department.trim().length < 2) {
       setError("Bölüm adı en az 2 karakter olmalı");
       return;
@@ -40,7 +47,7 @@ export default function Step2Screen() {
     if (!year) { setError("Sınıfını seç"); return; }
 
     setOnboarding({
-      university: university.trim(),
+      university: detectedUniversity,
       department: department.trim(),
       year,
       bio: bio.trim(),
@@ -105,28 +112,28 @@ export default function Step2Screen() {
             Üniversite ve bölüm bilgilerini gir
           </Text>
 
-          {/* University input */}
+          {/* University display (auto-detected) */}
           <View style={{ marginBottom: 20 }}>
             <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
               Üniversite
             </Text>
-            <TextInput
-              value={university}
-              onChangeText={(t) => { setUniversity(t); setError(""); }}
-              placeholder="Örn. İstanbul Teknik Üniversitesi"
-              placeholderTextColor={theme.textPlaceholder}
-              testID="university-input"
-              style={{
-                backgroundColor: theme.surface,
-                borderWidth: 1.5,
-                borderColor: theme.borderDefault,
-                borderRadius: 14,
-                paddingHorizontal: 18,
-                paddingVertical: 16,
-                color: theme.textPrimary,
-                fontSize: 16,
-              }}
-            />
+            <View style={{
+              backgroundColor: theme.surface,
+              borderWidth: 1.5,
+              borderColor: theme.primary,
+              borderRadius: 14,
+              paddingHorizontal: 18,
+              paddingVertical: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}>
+              <Text style={{ color: theme.textPrimary, fontSize: 16 }}>{detectedUniversity}</Text>
+              <Text style={{ fontSize: 16 }}>🎓</Text>
+            </View>
+            <Text style={{ color: theme.textPlaceholder, fontSize: 12, marginTop: 6 }}>
+              E-postandan otomatik algılandı
+            </Text>
           </View>
 
           {/* Department */}

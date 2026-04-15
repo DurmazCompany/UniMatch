@@ -1,21 +1,52 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Image } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  withDelay,
+  interpolate,
+} from "react-native-reanimated";
 import { api } from "@/lib/api/api";
 import { authClient } from "@/lib/auth/auth-client";
 import { useInvalidateSession } from "@/lib/auth/use-session";
 import { Profile, WhoLikedMeResponse } from "@/lib/types";
 import { theme, gradients } from "@/lib/theme";
+import { getZodiacSign, getZodiacInfo } from "@/lib/astrology";
 
-import { Bell, Shield, CircleHelp, LogOut, ChevronRight, Settings, Edit2, Camera, Flame, Lightbulb, Sunrise, Moon, BookOpen, Coffee, Leaf } from "lucide-react-native";
+import {
+  Bell, Shield, CircleHelp, LogOut, ChevronRight, Settings,
+  Edit2, Camera, Flame, Lightbulb, Sunrise, Moon, BookOpen, Coffee, Leaf,
+} from "lucide-react-native";
 
 function ProfilePowerBar({ power }: { power: number }) {
   const pct = Math.min(power, 100);
   const color = pct < 40 ? theme.error : pct < 70 ? theme.warning : theme.success;
+  const shimmer = useSharedValue(-1);
+
+  useEffect(() => {
+    shimmer.value = withRepeat(
+      withSequence(
+        withDelay(1000, withTiming(2, { duration: 1200 })),
+        withTiming(-1, { duration: 0 })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const shimmerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(shimmer.value, [-1, 0.5, 1.5, 2], [0, 0.6, 0.6, 0]),
+    left: `${interpolate(shimmer.value, [-1, 2], [-20, 120])}%`,
+  }));
+
   return (
     <View
       style={{
@@ -23,11 +54,8 @@ function ProfilePowerBar({ power }: { power: number }) {
         borderRadius: 16,
         padding: 18,
         marginBottom: 14,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 2,
+        borderWidth: 1,
+        borderColor: theme.borderDefault,
       }}
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
@@ -36,20 +64,143 @@ function ProfilePowerBar({ power }: { power: number }) {
       </View>
       <View style={{ height: 8, backgroundColor: theme.surface, borderRadius: 4, overflow: "hidden" }}>
         <LinearGradient
-          colors={pct < 40 ? [theme.error, "#F97316"] : pct < 70 ? [theme.warning, "#FBBF24"] : ["#059669", theme.success]}
+          colors={
+            pct < 40
+              ? [theme.error, "#F97316"]
+              : pct < 70
+              ? [theme.warning, "#FBBF24"]
+              : ["#059669", theme.success]
+          }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={{ height: "100%", width: `${pct}%`, borderRadius: 4 }}
-        />
+          style={{ height: "100%", width: `${pct}%`, borderRadius: 4, overflow: "hidden" }}
+        >
+          {/* Shimmer */}
+          <Animated.View
+            style={[
+              {
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                width: "20%",
+                backgroundColor: "rgba(255,255,255,0.5)",
+                borderRadius: 4,
+              },
+              shimmerStyle,
+            ]}
+          />
+        </LinearGradient>
       </View>
       {pct < 80 ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 9 }}>
           <Lightbulb size={14} color={theme.textSecondary} />
           <Text style={{ color: theme.textSecondary, fontSize: 12, lineHeight: 18 }}>
-            Profilini %80&apos;e tamamlarsan 3x daha fazla kisiye gosterilirsin!
+            Profilini %80&apos;e tamamlarsan 3x daha fazla kişiye gösterilirsin!
           </Text>
         </View>
       ) : null}
+    </View>
+  );
+}
+
+function ZodiacSection({ birthDate }: { birthDate: string }) {
+  const sign = getZodiacSign(birthDate);
+  const info = getZodiacInfo(sign);
+
+  const elementColors: Record<string, [string, string]> = {
+    fire: ["#E8445A", "#FF8C00"],
+    earth: ["#4CAF50", "#2E7D32"],
+    air: ["#29B6F6", "#0288D1"],
+    water: ["#7C4DFF", "#3949AB"],
+  };
+  const [gradStart, gradEnd] = elementColors[info.element] ?? ["#E8445A", "#FF5E73"];
+
+  return (
+    <View
+      style={{
+        backgroundColor: theme.cardBackground,
+        borderRadius: 16,
+        marginBottom: 14,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: theme.borderDefault,
+      }}
+    >
+      <LinearGradient
+        colors={[`${gradStart}18`, "transparent"]}
+        style={{ padding: 18 }}
+      >
+        {/* Header */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 1.5,
+              borderColor: `${gradStart}40`,
+            }}
+          >
+            <LinearGradient
+              colors={[gradStart, gradEnd]}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ fontSize: 22 }}>{info.symbol}</Text>
+            </LinearGradient>
+          </View>
+          <View>
+            <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>
+              Burç
+            </Text>
+            <Text style={{ color: theme.textPrimary, fontSize: 20, fontWeight: "800" }}>
+              {info.symbol} {info.turkishName}
+            </Text>
+          </View>
+        </View>
+
+        {/* Traits */}
+        <View style={{ gap: 8, marginBottom: 12 }}>
+          {info.traits.map((trait, i) => (
+            <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: gradStart,
+                }}
+              />
+              <Text style={{ color: theme.textSecondary, fontSize: 14, lineHeight: 20 }}>{trait}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Relationship style */}
+        <View
+          style={{
+            backgroundColor: "rgba(255,255,255,0.04)",
+            borderRadius: 10,
+            padding: 12,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.06)",
+          }}
+        >
+          <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "600", letterSpacing: 0.5, marginBottom: 4 }}>
+            İLİŞKİ TARZI
+          </Text>
+          <Text style={{ color: theme.textPrimary, fontSize: 13, lineHeight: 19 }}>
+            {info.relationshipStyle}
+          </Text>
+        </View>
+      </LinearGradient>
     </View>
   );
 }
@@ -68,6 +219,19 @@ export default function ProfileScreen() {
   const queryClient = useQueryClient();
   const invalidateSession = useInvalidateSession();
   const [campusPressed, setCampusPressed] = useState(false);
+
+  const streakGlow = useSharedValue(0);
+  useEffect(() => {
+    streakGlow.value = withRepeat(
+      withSequence(withTiming(1, { duration: 1200 }), withTiming(0.4, { duration: 1200 })),
+      -1,
+      false
+    );
+  }, []);
+  const streakGlowStyle = useAnimatedStyle(() => ({
+    shadowOpacity: interpolate(streakGlow.value, [0, 1], [0.3, 0.7]),
+    shadowRadius: interpolate(streakGlow.value, [0, 1], [6, 16]),
+  }));
 
   const { data: profile, isLoading } = useQuery<Profile | null>({
     queryKey: ["my-profile"],
@@ -116,9 +280,7 @@ export default function ProfileScreen() {
     );
   }
 
-  if (!profile) {
-    return null;
-  }
+  if (!profile) return null;
 
   const photos = parsePhotos(profile.photos);
   const lifestyle = profile.lifestyle ? JSON.parse(profile.lifestyle) : {};
@@ -133,7 +295,16 @@ export default function ProfileScreen() {
     <View style={{ flex: 1, backgroundColor: theme.background }} testID="profile-screen">
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <View
+          style={{
+            paddingTop: insets.top + 12,
+            paddingHorizontal: 20,
+            paddingBottom: 20,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <Text style={{ color: theme.textPrimary, fontSize: 28, fontWeight: "700" }}>Profil</Text>
           <Pressable
             onPress={() => router.push("/(app)/edit-profile")}
@@ -161,20 +332,14 @@ export default function ProfileScreen() {
                   width: 120,
                   height: 120,
                   borderRadius: 60,
-                  borderWidth: 4,
+                  borderWidth: 3,
                   borderColor: theme.primary,
                 }}
               />
             ) : (
               <LinearGradient
                 colors={gradients.button}
-                style={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: 60,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                style={{ width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center" }}
               >
                 <Text style={{ color: "#fff", fontSize: 48, fontWeight: "700" }}>
                   {profile.name[0]?.toUpperCase()}
@@ -207,28 +372,35 @@ export default function ProfileScreen() {
             {profile.department} · {profile.year}. Sınıf
           </Text>
           <Text style={{ color: theme.textSecondary, fontSize: 14, marginTop: 2 }}>
-            {profile.university?.name}
+            {profile.university}
           </Text>
 
-          {/* Streak */}
+          {/* Streak with glow */}
           {profile.streakCount > 0 ? (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: "rgba(245,158,11,0.1)",
-                borderRadius: 100,
-                paddingHorizontal: 14,
-                paddingVertical: 7,
-                marginTop: 14,
-                gap: 6,
-              }}
+            <Animated.View
+              style={[
+                {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: "rgba(245,158,11,0.12)",
+                  borderRadius: 100,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  marginTop: 14,
+                  gap: 6,
+                  shadowColor: "#F59E0B",
+                  shadowOffset: { width: 0, height: 0 },
+                  borderWidth: 1,
+                  borderColor: "rgba(245,158,11,0.2)",
+                },
+                streakGlowStyle,
+              ]}
             >
               <Flame size={16} color="#F59E0B" />
               <Text style={{ color: "#F59E0B", fontSize: 14, fontWeight: "700" }}>
-                {profile.streakCount} gunluk streak
+                {profile.streakCount} günlük streak
               </Text>
-            </View>
+            </Animated.View>
           ) : null}
 
           {/* Edit Profile Button */}
@@ -238,24 +410,15 @@ export default function ProfileScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push("/(app)/edit-profile");
             }}
-            style={({ pressed }) => ({
-              marginTop: 16,
-              opacity: pressed ? 0.8 : 1,
-            })}
+            style={({ pressed }) => ({ marginTop: 16, opacity: pressed ? 0.8 : 1 })}
           >
             <LinearGradient
               colors={gradients.button}
-              style={{
-                paddingVertical: 14,
-                paddingHorizontal: 32,
-                borderRadius: 28,
-              }}
+              style={{ paddingVertical: 14, paddingHorizontal: 32, borderRadius: 28 }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Edit2 size={16} color="#fff" />
-                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
-                  Profili Düzenle
-                </Text>
+                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>Profili Düzenle</Text>
               </View>
             </LinearGradient>
           </Pressable>
@@ -265,6 +428,9 @@ export default function ProfileScreen() {
           {/* Profile power bar */}
           <ProfilePowerBar power={profile.profilePower} />
 
+          {/* Zodiac section */}
+          <ZodiacSection birthDate={profile.birthDate} />
+
           {/* Who liked me */}
           <View
             style={{
@@ -272,11 +438,8 @@ export default function ProfileScreen() {
               borderRadius: 16,
               padding: 18,
               marginBottom: 14,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 8,
-              elevation: 2,
+              borderWidth: 1,
+              borderColor: theme.borderDefault,
             }}
           >
             <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700", marginBottom: 12 }}>
@@ -345,11 +508,8 @@ export default function ProfileScreen() {
                 borderRadius: 16,
                 padding: 18,
                 marginBottom: 14,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 8,
-                elevation: 2,
+                borderWidth: 1,
+                borderColor: theme.borderDefault,
               }}
             >
               <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700", marginBottom: 12 }}>
@@ -360,14 +520,14 @@ export default function ProfileScreen() {
                   <View style={chipStyle}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       <Sunrise size={12} color={theme.primary} />
-                      <Text style={chipText}>Sabahci</Text>
+                      <Text style={chipText}>Sabahçı</Text>
                     </View>
                   </View>
                 ) : lifestyle.schedule === "night" ? (
                   <View style={chipStyle}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       <Moon size={12} color={theme.primary} />
-                      <Text style={chipText}>Gece Kusu</Text>
+                      <Text style={chipText}>Gece Kuşu</Text>
                     </View>
                   </View>
                 ) : null}
@@ -375,7 +535,7 @@ export default function ProfileScreen() {
                   <View style={chipStyle}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       <BookOpen size={12} color={theme.primary} />
-                      <Text style={chipText}>Kutuphane</Text>
+                      <Text style={chipText}>Kütüphane</Text>
                     </View>
                   </View>
                 ) : lifestyle.spot === "cafeteria" ? (
@@ -389,7 +549,7 @@ export default function ProfileScreen() {
                   <View style={chipStyle}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       <Leaf size={12} color={theme.primary} />
-                      <Text style={chipText}>Disarisi</Text>
+                      <Text style={chipText}>Dışarısı</Text>
                     </View>
                   </View>
                 ) : null}
@@ -404,14 +564,15 @@ export default function ProfileScreen() {
               borderRadius: 16,
               marginBottom: 24,
               overflow: "hidden",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 8,
-              elevation: 2,
+              borderWidth: 1,
+              borderColor: theme.borderDefault,
             }}
           >
-            <SettingsItem icon={<Bell size={20} color={theme.textSecondary} />} label="Bildirimler" onPress={() => router.push("/(app)/settings/notifications")} />
+            <SettingsItem
+              icon={<Bell size={20} color={theme.textSecondary} />}
+              label="Bildirimler"
+              onPress={() => router.push("/(app)/settings/notifications")}
+            />
             <SettingsItem icon={<Shield size={20} color={theme.textSecondary} />} label="Gizlilik ve Güvenlik" />
             <SettingsItem icon={<CircleHelp size={20} color={theme.textSecondary} />} label="Yardım ve Destek" />
             <SettingsItem
@@ -464,6 +625,8 @@ function SettingsItem({
 
 const chipStyle = {
   backgroundColor: "rgba(232,68,90,0.08)",
+  borderWidth: 0.5,
+  borderColor: "rgba(232,68,90,0.25)",
   borderRadius: 100,
   paddingHorizontal: 12,
   paddingVertical: 6,

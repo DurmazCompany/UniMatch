@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
-import { Home, MessageCircle, User } from "lucide-react-native";
-import { View } from "react-native";
+import { Home, MessageCircle, User, CalendarDays } from "lucide-react-native";
+import { View, Platform } from "react-native";
 import { theme } from "@/lib/theme";
 
 export default function AppLayout() {
@@ -12,15 +12,16 @@ export default function AppLayout() {
           backgroundColor: theme.tabBarBackground,
           borderTopColor: theme.tabBarBorder,
           borderTopWidth: 0.5,
-          height: 70,
-          paddingTop: 8,
-          paddingBottom: 20,
+          paddingTop: 10,
+          paddingBottom: Platform.OS === "ios" ? 28 : 14,
+          paddingHorizontal: 0,
         },
         tabBarActiveTintColor: theme.tabBarActive,
-        tabBarInactiveTintColor: theme.tabBarInactive,
+        tabBarInactiveTintColor: "rgba(255,255,255,0.3)",
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "500",
+          fontSize: 10,
+          fontWeight: "600",
+          letterSpacing: 0.2,
         },
       }}
     >
@@ -29,8 +30,57 @@ export default function AppLayout() {
         options={{
           title: "Keşfet",
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: "center" }}>
-              <Home size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: focused ? 1.18 : 1 }],
+              }}
+            >
+              {focused ? (
+                <View
+                  style={{
+                    shadowColor: theme.primary,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.7,
+                    shadowRadius: 10,
+                  }}
+                >
+                  <Home size={26} color={color} strokeWidth={2.5} fill={color} />
+                </View>
+              ) : (
+                <Home size={24} color={color} strokeWidth={2} />
+              )}
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="this-week"
+        options={{
+          title: "Bu Hafta",
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: focused ? 1.18 : 1 }],
+              }}
+            >
+              {focused ? (
+                <View
+                  style={{
+                    shadowColor: theme.primary,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.7,
+                    shadowRadius: 10,
+                  }}
+                >
+                  <CalendarDays size={26} color={color} strokeWidth={2.5} />
+                </View>
+              ) : (
+                <CalendarDays size={24} color={color} strokeWidth={2} />
+              )}
             </View>
           ),
         }}
@@ -40,22 +90,44 @@ export default function AppLayout() {
         options={{
           title: "Mesajlar",
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: "center", position: "relative" }}>
-              <MessageCircle size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
+                transform: [{ scale: focused ? 1.18 : 1 }],
+              }}
+            >
+              {focused ? (
+                <View
+                  style={{
+                    shadowColor: theme.primary,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.7,
+                    shadowRadius: 10,
+                  }}
+                >
+                  <MessageCircle size={26} color={color} strokeWidth={2.5} fill={`${color}30`} />
+                </View>
+              ) : (
+                <MessageCircle size={24} color={color} strokeWidth={2} />
+              )}
               {/* Notification badge */}
               <View
                 style={{
                   position: "absolute",
-                  top: -4,
-                  right: -8,
+                  top: -3,
+                  right: -7,
+                  width: 9,
+                  height: 9,
+                  borderRadius: 5,
                   backgroundColor: theme.primary,
-                  borderRadius: 8,
-                  minWidth: 16,
-                  height: 16,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 2,
+                  borderWidth: 1.5,
                   borderColor: theme.tabBarBackground,
+                  shadowColor: theme.primary,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.9,
+                  shadowRadius: 4,
                 }}
               />
             </View>
@@ -67,8 +139,27 @@ export default function AppLayout() {
         options={{
           title: "Profil",
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: "center" }}>
-              <User size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: focused ? 1.18 : 1 }],
+              }}
+            >
+              {focused ? (
+                <View
+                  style={{
+                    shadowColor: theme.primary,
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 0.7,
+                    shadowRadius: 10,
+                  }}
+                >
+                  <User size={26} color={color} strokeWidth={2.5} fill={`${color}40`} />
+                </View>
+              ) : (
+                <User size={24} color={color} strokeWidth={2} />
+              )}
             </View>
           ),
         }}
