@@ -10,7 +10,10 @@ export const useSession = () => {
       const result = await authClient.getSession();
       return result.data ?? null;
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 };
 

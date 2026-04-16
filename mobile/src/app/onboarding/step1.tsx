@@ -92,7 +92,7 @@ export default function Step1Screen() {
                   flex: 1,
                   height: 3,
                   borderRadius: 2,
-                  backgroundColor: step <= 1 ? theme.primary : theme.borderDefault,
+                  backgroundColor: step <= 1 ? theme.primary : theme.base.border,
                 }}
               />
             ))}
@@ -121,17 +121,17 @@ export default function Step1Screen() {
               value={name}
               onChangeText={(t) => { setName(t); setError(""); }}
               placeholder="Adın"
-              placeholderTextColor={theme.textPlaceholder}
+              placeholderTextColor={theme.base.hint}
               autoCapitalize="words"
               testID="name-input"
               style={{
-                backgroundColor: theme.surface,
+                backgroundColor: theme.base.surface,
                 borderWidth: 1.5,
-                borderColor: theme.borderDefault,
-                borderRadius: 14,
+                borderColor: theme.base.border,
+                borderRadius: theme.radius.pill,
                 paddingHorizontal: 18,
                 paddingVertical: 16,
-                color: theme.textPrimary,
+                color: theme.base.text,
                 fontSize: 16,
               }}
             />
@@ -146,10 +146,10 @@ export default function Step1Screen() {
               onPress={() => setShowDatePicker(!showDatePicker)}
               testID="birthdate-picker"
               style={{
-                backgroundColor: theme.surface,
+                backgroundColor: theme.base.surface,
                 borderWidth: 1.5,
-                borderColor: showDatePicker ? theme.primary : theme.borderDefault,
-                borderRadius: 14,
+                borderColor: showDatePicker ? theme.primary : theme.base.border,
+                borderRadius: theme.radius.pill,
                 paddingHorizontal: 18,
                 paddingVertical: 16,
                 flexDirection: "row",
@@ -157,8 +157,8 @@ export default function Step1Screen() {
                 alignItems: "center",
               }}
             >
-              <Text style={{ color: theme.textPrimary, fontSize: 16 }}>{formattedDate}</Text>
-              <Calendar size={18} color={theme.textSecondary} />
+              <Text style={{ color: theme.base.text, fontSize: 16 }}>{formattedDate}</Text>
+              <Calendar size={18} color={theme.base.muted} />
             </Pressable>
             {showDatePicker ? (
               <DateTimePicker
@@ -182,32 +182,36 @@ export default function Step1Screen() {
               Cinsiyet
             </Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
-              {GENDERS.map((g) => (
-                <Pressable
-                  key={g.value}
-                  onPress={() => { setGender(g.value); setError(""); }}
-                  testID={`gender-${g.value}`}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 14,
-                    borderRadius: 14,
-                    borderWidth: 1.5,
-                    borderColor: gender === g.value ? theme.primary : theme.borderDefault,
-                    backgroundColor: gender === g.value ? "rgba(225,29,72,0.15)" : theme.surface,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text
+              {GENDERS.map((g) => {
+                const isSelected = gender === g.value;
+                const genderTheme = g.value === "male" ? theme.male : g.value === "female" ? theme.female : null;
+                return (
+                  <Pressable
+                    key={g.value}
+                    onPress={() => { setGender(g.value); setError(""); }}
+                    testID={`gender-${g.value}`}
                     style={{
-                      color: gender === g.value ? theme.accent : theme.textSecondary,
-                      fontSize: 14,
-                      fontWeight: "600",
+                      flex: 1,
+                      paddingVertical: 14,
+                      borderRadius: theme.radius.pill,
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? (genderTheme?.accent ?? theme.primary) : theme.base.border,
+                      backgroundColor: isSelected ? (genderTheme?.pale ?? "rgba(0,0,0,0.05)") : theme.base.surface,
+                      alignItems: "center",
                     }}
                   >
-                    {g.label}
-                  </Text>
-                </Pressable>
-              ))}
+                    <Text
+                      style={{
+                        color: isSelected ? (genderTheme?.accent ?? theme.base.text) : theme.base.muted,
+                        fontSize: 14,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {g.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
 
@@ -223,10 +227,10 @@ export default function Step1Screen() {
             style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
           >
             <LinearGradient
-              colors={gradients.button}
+              colors={theme.buttonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={{ paddingVertical: 18, borderRadius: 14, alignItems: "center" }}
+              style={{ paddingVertical: 18, borderRadius: theme.radius.pill, alignItems: "center" }}
             >
               <Text style={{ color: "#fff", fontSize: 17, fontWeight: "700" }}>Devam →</Text>
             </LinearGradient>

@@ -48,10 +48,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   render() {
     if (this.state.hasError) {
       return (
-        <View style={{ flex: 1, backgroundColor: "#0D0D0D", alignItems: "center", justifyContent: "center", padding: 40 }}>
-          <Text style={{ color: "#fff", fontSize: 24, fontWeight: "700", marginBottom: 12 }}>Bir şeyler ters gitti.</Text>
-          <Text style={{ color: "rgba(255,255,255,0.6)", textAlign: "center", marginBottom: 24 }}>Uygulama beklenmedik bir hata ile karşılaştı.</Text>
-          <Pressable onPress={() => this.setState({ hasError: false })} style={{ paddingHorizontal: 20, paddingVertical: 10, backgroundColor: "#E8445A", borderRadius: 8 }}>
+        <View style={{ flex: 1, backgroundColor: theme.base.bg, alignItems: "center", justifyContent: "center", padding: 40 }}>
+          <Text style={{ color: theme.base.text, fontSize: 24, fontWeight: "700", marginBottom: 12 }}>Bir şeyler ters gitti.</Text>
+          <Text style={{ color: theme.base.muted, textAlign: "center", marginBottom: 24 }}>Uygulama beklenmedik bir hata ile karşılaştı.</Text>
+          <Pressable onPress={() => this.setState({ hasError: false })} style={{ paddingHorizontal: 20, paddingVertical: 10, backgroundColor: theme.primary, borderRadius: 8 }}>
             <Text style={{ color: "#fff", fontWeight: "600" }}>Tekrar Dene</Text>
           </Pressable>
         </View>
@@ -130,15 +130,15 @@ function RootLayoutNav() {
 
   return (
     <View
-      style={{ flex: 1, backgroundColor: "#0D0D0D" }}
+      style={{ flex: 1, backgroundColor: theme.base.bg }}
       onLayout={() => SplashScreen.hideAsync()}
     >
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
         <ErrorBoundary>
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: "#0D0D0D" },
+              contentStyle: { backgroundColor: theme.base.bg },
               animation: "fade",
             }}
           >

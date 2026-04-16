@@ -1,33 +1,63 @@
-// UniMatch Theme - Dark & Red Accent
+// UniMatch Theme - New Light Theme System
+const female = {
+  accent: "#D4537E",
+  pale: "#FBEAF0",
+  mid: "#F4C0D1",
+  border: "rgba(212,83,126,0.18)",
+};
+
+const male = {
+  accent: "#185FA5",
+  pale: "#E6F1FB",
+  mid: "#B5D4F4",
+  border: "rgba(24,95,165,0.18)",
+};
+
+const base = {
+  bg: "#F5F3F6",
+  surface: "#FFFFFF",
+  text: "#1A0D14",
+  muted: "#6B4A58",
+  hint: "#A08090",
+  border: "rgba(180,100,140,0.12)",
+};
+
+const radius = {
+  card: 16,
+  pill: 14,
+  tag: 20,
+  event: 20,
+  person: 22,
+  phone: 38,
+};
+
 export const theme = {
-  // Background colors
-  background: "#0D0D0D",
-  surface: "#1A1A1A",
-  surfaceElevated: "#222222",
-  inputBackground: "#1E1E1E",
+  female,
+  male,
+  base,
+  radius,
 
-  // Card backgrounds
-  cardBackground: "#1A1A1A",
-  cardShadow: "rgba(0,0,0,0.3)",
+  // Legacy mappings for backward compatibility
+  background: base.bg,
+  surface: base.surface,
+  surfaceElevated: base.surface,
+  inputBackground: base.surface,
 
-  // Primary colors
-  primary: "#E8445A",
-  accent: "#E8445A",
+  // Primary colors (Defaulting to female accent for brand)
+  primary: female.accent,
+  accent: female.accent,
   online: "#4CD964",
 
-  // Gradient colors
-  gradientStart: "#1A0D12",
-
   // Text colors
-  textPrimary: "#FFFFFF",
-  textSecondary: "#8E8E93",
-  textPlaceholder: "#48484A",
+  textPrimary: base.text,
+  textSecondary: base.muted,
+  textPlaceholder: base.hint,
   textOnPrimary: "#FFFFFF",
 
   // Border colors
-  borderDefault: "rgba(255,255,255,0.08)",
-  inputBorder: "rgba(255,255,255,0.12)",
-  borderFocused: "#E8445A",
+  borderDefault: base.border,
+  inputBorder: base.border,
+  borderFocused: female.accent,
   borderError: "#FF3B30",
 
   // Status colors
@@ -36,35 +66,31 @@ export const theme = {
   warning: "#FFCC00",
 
   // Messages
-  messageSent: "#E8445A",
-  messageReceived: "#2C2C2E",
-  messageTextReceived: "#FFFFFF",
+  messageSent: female.accent,
+  messageReceived: base.surface,
+  messageTextReceived: base.text,
 
   // Button gradients
-  buttonGradient: ["#E8445A", "#FF5E73"] as [string, string],
+  buttonGradient: [female.accent, female.mid] as [string, string],
 
   // Story ring gradient
-  storyGradient: ["#E8445A", "#FF5E73", "#FF8C94"] as [string, string, string],
-  storyWatchedGradient: ["#3A3A3C", "#2C2C2E"] as [string, string],
+  storyGradient: [female.accent, female.mid, female.pale] as [string, string, string],
+  storyWatchedGradient: ["#E5E7EB", "#F3F4F6"] as [string, string],
 
   // Tab bar
-  tabBarBackground: "#111111",
-  tabBarBorder: "rgba(255,255,255,0.1)",
-  tabBarActive: "#E8445A",
-  tabBarInactive: "#48484A",
-
-  // Streak colors
-  streakFire: "#FF9500",
-  streakDanger: "#FF3B30",
+  tabBarBackground: base.surface,
+  tabBarBorder: base.border,
+  tabBarActive: female.accent,
+  tabBarInactive: base.hint,
 };
 
 // Gradient presets for LinearGradient
 export const gradients = {
-  background: ["#121212", "#0D0D0D"] as [string, string],
+  background: [base.bg, base.bg] as [string, string],
   button: theme.buttonGradient,
-  cardOverlay: ["transparent", "rgba(0,0,0,0.85)"] as [string, string],
-  card: ["rgba(232, 68, 90, 0.1)", "rgba(0, 0, 0, 0)"] as [string, string],
+  cardOverlay: ["transparent", "rgba(0,0,0,0.6)"] as [string, string],
+  card: [female.pale, "rgba(255, 255, 255, 0)"] as [string, string],
   story: theme.storyGradient as unknown as [string, string],
-  header: ["#0D0D0D", "#0D0D0D"] as [string, string],
+  header: [base.bg, base.bg] as [string, string],
   streak: ["#FF9500", "#FF5E00"] as [string, string],
 };

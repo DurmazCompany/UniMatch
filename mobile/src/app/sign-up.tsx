@@ -12,7 +12,8 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { authClient } from "@/lib/auth/auth-client";
-import { useInvalidateSession } from "@/lib/auth/use-session";
+import { useQueryClient } from "@tanstack/react-query";
+import { SESSION_QUERY_KEY } from "@/lib/auth/use-session";
 import { useAppStore } from "@/lib/store/app-store";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -39,7 +40,7 @@ export default function SignUpScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  const invalidateSession = useInvalidateSession();
+  const queryClient = useQueryClient();
   const setOnboarding = useAppStore((s) => s.setOnboarding);
 
   const handleSignUp = async () => {
@@ -79,7 +80,7 @@ export default function SignUpScreen() {
         if (referralCode.trim()) {
           setOnboarding({ referralCode: referralCode.trim() });
         }
-        await invalidateSession();
+        queryClient.setQueryData(SESSION_QUERY_KEY, result.data);
         router.replace("/(app)");
       }
     } catch (e) {

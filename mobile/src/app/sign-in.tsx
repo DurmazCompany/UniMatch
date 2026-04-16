@@ -13,7 +13,8 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { authClient } from "@/lib/auth/auth-client";
-import { useInvalidateSession } from "@/lib/auth/use-session";
+import { useQueryClient } from "@tanstack/react-query";
+import { SESSION_QUERY_KEY } from "@/lib/auth/use-session";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme, gradients } from "@/lib/theme";
@@ -37,7 +38,7 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  const invalidateSession = useInvalidateSession();
+  const queryClient = useQueryClient();
 
   const handleSignIn = async () => {
     setError("");
@@ -66,7 +67,7 @@ export default function SignInScreen() {
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await SecureStore.setItemAsync("campusmatch_last_email", email.trim().toLowerCase());
-        await invalidateSession();
+        queryClient.setQueryData(SESSION_QUERY_KEY, result.data);
         router.replace("/(app)");
       }
     } catch (e) {
@@ -178,10 +179,10 @@ export default function SignInScreen() {
                   focusedField === "email"
                     ? theme.primary
                     : theme.borderDefault,
-                borderRadius: 14,
+                borderRadius: theme.radius.pill,
                 paddingHorizontal: 20,
                 paddingVertical: 18,
-                color: theme.textPrimary,
+                color: theme.base.text,
                 fontSize: 17,
               }}
             />
@@ -233,11 +234,11 @@ export default function SignInScreen() {
                     focusedField === "password"
                       ? theme.primary
                       : theme.borderDefault,
-                  borderRadius: 14,
+                  borderRadius: theme.radius.pill,
                   paddingHorizontal: 20,
                   paddingVertical: 18,
                   paddingRight: 56,
-                  color: theme.textPrimary,
+                  color: theme.base.text,
                   fontSize: 17,
                 }}
               />
@@ -302,12 +303,12 @@ export default function SignInScreen() {
             })}
           >
             <LinearGradient
-              colors={gradients.button}
+              colors={theme.buttonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{
                 paddingVertical: 18,
-                borderRadius: 14,
+                borderRadius: theme.radius.pill,
                 alignItems: "center",
               }}
             >

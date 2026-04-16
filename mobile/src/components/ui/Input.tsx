@@ -34,17 +34,17 @@ export function Input({ label, error, containerStyle, ...props }: InputProps) {
         onBlur={() => setFocused(false)}
         style={[
           {
-            backgroundColor: theme.inputBackground,
+            backgroundColor: theme.base.surface,
             borderWidth: 1.5,
             borderColor: focused
               ? theme.primary
               : error
                 ? theme.error
-                : theme.borderDefault,
-            borderRadius: 14,
+                : theme.base.border,
+            borderRadius: theme.radius.pill,
             paddingHorizontal: 18,
             paddingVertical: 16,
-            color: theme.textPrimary,
+            color: theme.base.text,
             fontSize: 16,
           },
             focused && {

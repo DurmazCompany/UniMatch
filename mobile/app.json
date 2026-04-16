@@ -8,12 +8,28 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vibecode.app",
+      "infoPlist": {
+        "NSCalendarsUsageDescription": "This app uses your calendar to help you schedule match-related events.",
+        "NSRemindersUsageDescription": "This app uses your reminders to notify you about upcoming events.",
+        "NSCameraUsageDescription": "This app needs access to your camera to let you take photos for your profile.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for recording voice messages.",
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to find matches nearby.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to let you choose a profile picture."
+      }
     },
     "android": {
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.vibecode.app"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      "expo-calendar",
+      "expo-camera",
+      "expo-location",
+      "expo-av"
+    ],
     "experiments": {
       "typedRoutes": true
     }

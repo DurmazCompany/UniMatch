@@ -13,9 +13,9 @@ interface ButtonProps {
 }
 
 const sizeStyles: Record<string, { padding: number; borderRadius: number; fontSize: number }> = {
-  sm: { padding: 8, borderRadius: 28, fontSize: 13 },
-  md: { padding: 14, borderRadius: 28, fontSize: 16 },
-  lg: { padding: 18, borderRadius: 28, fontSize: 18 },
+  sm: { padding: 8, borderRadius: theme.radius.pill, fontSize: 13 },
+  md: { padding: 14, borderRadius: theme.radius.pill, fontSize: 16 },
+  lg: { padding: 18, borderRadius: theme.radius.pill, fontSize: 18 },
 };
 
 export function Button({
@@ -39,7 +39,7 @@ export function Button({
         style={({ pressed }) => [{ opacity: pressed || disabled ? 0.7 : 1 }, style]}
       >
         <LinearGradient
-          colors={["#E8445A", "#FF5E73"]}
+          colors={theme.buttonGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{
@@ -70,9 +70,9 @@ export function Button({
   }
 
   const variantStyles: Record<string, { bg: string; border: string; text: string }> = {
-    secondary: { bg: "transparent", border: "rgba(255,255,255,0.2)", text: "#FFFFFF" },
-    danger: { bg: "rgba(239,68,68,0.15)", border: "rgba(239,68,68,0.3)", text: "#EF4444" },
-    ghost: { bg: "transparent", border: "transparent", text: "#E8445A" },
+    secondary: { bg: "transparent", border: theme.base.border, text: theme.base.text },
+    danger: { bg: "rgba(239,68,68,0.1)", border: "rgba(239,68,68,0.2)", text: "#EF4444" },
+    ghost: { bg: "transparent", border: "transparent", text: theme.primary },
   };
 
   const vs = variantStyles[variant] ?? variantStyles.secondary;
