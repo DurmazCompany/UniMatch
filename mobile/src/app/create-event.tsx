@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   Modal,
+  Switch,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -17,7 +18,17 @@ import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/dat
 import * as Haptics from "expo-haptics";
 import { theme, gradients } from "@/lib/theme";
 import { api } from "@/lib/api/api";
-import { ChevronLeft, Calendar, Clock, MapPin, FileText, Type, CheckCircle } from "lucide-react-native";
+import {
+  ChevronLeft,
+  Calendar,
+  Clock,
+  MapPin,
+  FileText,
+  Type,
+  CheckCircle,
+  Tag,
+  Users,
+} from "lucide-react-native";
 
 type PickerMode = "date" | "time";
 
@@ -116,8 +127,17 @@ export default function CreateEventScreen() {
   const [pickerMode, setPickerMode] = useState<PickerMode>("date");
   const [showPicker, setShowPicker] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [errors, setErrors] = useState<{ title?: string; location?: string }>({});
+  const [errors, setErrors] = useState<{
+    title?: string;
+    location?: string;
+    ticketPrice?: string;
+    maxAttendees?: string;
+  }>({});
   const [focused, setFocused] = useState<string | null>(null);
+
+  const [isPaid, setIsPaid] = useState(false);
+  const [ticketPrice, setTicketPrice] = useState("");
+  const [maxAttendees, setMaxAttendees] = useState("");
 
   const formatDate = (d: Date) => {
     const days = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
@@ -129,8 +149,15 @@ export default function CreateEventScreen() {
     `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 
   const createMutation = useMutation({
-    mutationFn: (data: { title: string; description?: string; date: string; location: string }) =>
-      api.post("/api/events", data),
+    mutationFn: (data: {
+      title: string;
+      description?: string;
+      date: string;
+      location: string;
+      isPaid: boolean;
+      ticketPrice?: number;
+      maxAttendees?: number;
+    }) => api.post("/api/events", data),
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowSuccess(true);
@@ -146,6 +173,18 @@ export default function CreateEventScreen() {
     const newErrors: typeof errors = {};
     if (!title.trim()) newErrors.title = "Başlık zorunludur";
     if (!location.trim()) newErrors.location = "Konum zorunludur";
+    if (isPaid) {
+      const price = parseFloat(ticketPrice);
+      if (!ticketPrice.trim() || isNaN(price) || price <= 0) {
+        newErrors.ticketPrice = "Geçerli bir fiyat girin";
+      }
+    }
+    if (maxAttendees.trim()) {
+      const cap = parseInt(maxAttendees, 10);
+      if (isNaN(cap) || cap <= 0) {
+        newErrors.maxAttendees = "Geçerli bir sayı girin";
+      }
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -153,11 +192,18 @@ export default function CreateEventScreen() {
       return;
     }
     setErrors({});
+
+    const parsedPrice = isPaid ? parseFloat(ticketPrice) : undefined;
+    const parsedMax = maxAttendees.trim() ? parseInt(maxAttendees, 10) : undefined;
+
     createMutation.mutate({
       title: title.trim(),
       description: description.trim() || undefined,
       date: eventDate.toISOString(),
       location: location.trim(),
+      isPaid,
+      ticketPrice: parsedPrice,
+      maxAttendees: parsedMax,
     });
   };
 
@@ -356,6 +402,116 @@ export default function CreateEventScreen() {
             onFocus={() => setFocused("location")}
             onBlur={() => setFocused(null)}
             style={inputStyle(focused === "location")}
+          />
+        </InputBlock>
+
+        {/* Paid event toggle */}
+        <View
+          style={{
+            backgroundColor: theme.surface,
+            borderRadius: 14,
+            borderWidth: 1.5,
+            borderColor: isPaid ? theme.primary : theme.borderDefault,
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 20,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Tag size={18} color={isPaid ? theme.primary : theme.textSecondary} />
+            <View>
+              <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "600" }}>
+                Ücretli etkinlik
+              </Text>
+              <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 1 }}>
+                {isPaid ? "Katılım ücretli" : "Ücretsiz katılım"}
+              </Text>
+            </View>
+          </View>
+          <Switch
+            testID="paid-toggle"
+            value={isPaid}
+            onValueChange={(v) => {
+              setIsPaid(v);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (!v) setTicketPrice("");
+            }}
+            trackColor={{ false: theme.borderDefault, true: theme.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+
+        {/* Ticket price — shown only when isPaid */}
+        {isPaid ? (
+          <InputBlock
+            label="Bilet Fiyatı"
+            required
+            icon={<Tag size={14} color={theme.textSecondary} />}
+            error={errors.ticketPrice}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <View
+                style={{
+                  backgroundColor: theme.surface,
+                  borderWidth: 1.5,
+                  borderColor: focused === "ticketPrice" ? theme.primary : theme.borderDefault,
+                  borderRightWidth: 0,
+                  borderTopLeftRadius: 14,
+                  borderBottomLeftRadius: 14,
+                  paddingHorizontal: 14,
+                  paddingVertical: 14,
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: theme.primary, fontSize: 17, fontWeight: "700" }}>₺</Text>
+              </View>
+              <TextInput
+                value={ticketPrice}
+                onChangeText={(t) => {
+                  setTicketPrice(t.replace(/[^0-9.]/g, ""));
+                  setErrors((e) => ({ ...e, ticketPrice: undefined }));
+                }}
+                placeholder="0.00"
+                placeholderTextColor={theme.textPlaceholder}
+                keyboardType="decimal-pad"
+                testID="ticket-price-input"
+                onFocus={() => setFocused("ticketPrice")}
+                onBlur={() => setFocused(null)}
+                style={[
+                  inputStyle(focused === "ticketPrice"),
+                  {
+                    flex: 1,
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                  },
+                ]}
+              />
+            </View>
+          </InputBlock>
+        ) : null}
+
+        {/* Max attendees */}
+        <InputBlock
+          label="Maksimum Katılımcı"
+          icon={<Users size={14} color={theme.textSecondary} />}
+          error={errors.maxAttendees}
+        >
+          <TextInput
+            value={maxAttendees}
+            onChangeText={(t) => {
+              setMaxAttendees(t.replace(/[^0-9]/g, ""));
+              setErrors((e) => ({ ...e, maxAttendees: undefined }));
+            }}
+            placeholder="Sınırsız (isteğe bağlı)"
+            placeholderTextColor={theme.textPlaceholder}
+            keyboardType="number-pad"
+            testID="max-attendees-input"
+            onFocus={() => setFocused("maxAttendees")}
+            onBlur={() => setFocused(null)}
+            style={inputStyle(focused === "maxAttendees")}
           />
         </InputBlock>
 

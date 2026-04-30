@@ -110,15 +110,17 @@ profilesRouter.post("/", async (c) => {
   const photosJson = JSON.stringify(photos);
   const hobbiesJson = JSON.stringify(hobbies);
 
+  const existing = await prisma.profile.findUnique({ where: { userId: user.id } });
+
   // Calculate profile power using shared function
   const power = calculateProfilePower({
     photos: photosJson,
     bio: bio ?? null,
     hobbies: hobbiesJson,
     selfieVerified: selfieVerified ?? false,
+    isPremium: existing?.isPremium ?? false,
+    streakCount: existing?.streakCount ?? 0,
   });
-
-  const existing = await prisma.profile.findUnique({ where: { userId: user.id } });
 
   if (existing) {
     const updated = await prisma.profile.update({

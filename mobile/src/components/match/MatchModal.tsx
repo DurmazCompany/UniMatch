@@ -10,6 +10,7 @@ import Animated, {
   withSequence,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { Match } from "@/lib/types";
 import { router } from "expo-router";
 import { theme, gradients } from "@/lib/theme";
@@ -17,31 +18,28 @@ import { getZodiacSign, getZodiacDisplay, getAstrologyComment } from "@/lib/astr
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const CONFETTI_COLORS = [theme.primary, theme.accent, "#F59E0B", "#10B981", "#EF4444", "#60A5FA"];
+const CONFETTI_COLORS = [theme.primary, "#FFD700", "#00C896", "#4FC3F7"];
 
 function ConfettiPiece({ index }: { index: number }) {
-  const x = useSharedValue(Math.random() * SCREEN_WIDTH);
-  const y = useSharedValue(-20);
-  const rotate = useSharedValue(0);
+  const translateY = useSharedValue(-20);
   const opacity = useSharedValue(1);
+  const rotate = useSharedValue(0);
 
+  const x = Math.random() * SCREEN_WIDTH;
   const color = CONFETTI_COLORS[index % CONFETTI_COLORS.length];
-  const size = 6 + Math.random() * 8;
-  const duration = 2000 + Math.random() * 2000;
-  const delay = Math.random() * 1500;
+  const size = 8;
+  const borderRadius = index % 2 === 0 ? 4 : 2;
+  const delay = index * 80;
+  const duration = 2000;
 
   useEffect(() => {
-    y.value = withDelay(delay, withTiming(SCREEN_HEIGHT + 40, { duration }));
-    rotate.value = withDelay(delay, withRepeat(withTiming(360, { duration: 800 }), -1));
-    opacity.value = withDelay(delay + duration * 0.7, withTiming(0, { duration: duration * 0.3 }));
+    translateY.value = withDelay(delay, withTiming(SCREEN_HEIGHT, { duration }));
+    rotate.value = withDelay(delay, withRepeat(withTiming(360, { duration: 600 }), -1));
+    opacity.value = withDelay(delay + duration * 0.75, withTiming(0, { duration: duration * 0.25 }));
   }, []);
 
-  const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: x.value },
-      { translateY: y.value },
-      { rotate: `${rotate.value}deg` },
-    ],
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }, { rotate: `${rotate.value}deg` }],
     opacity: opacity.value,
   }));
 
@@ -50,12 +48,14 @@ function ConfettiPiece({ index }: { index: number }) {
       style={[
         {
           position: "absolute",
+          left: x,
+          top: 0,
           width: size,
           height: size,
           backgroundColor: color,
-          borderRadius: Math.random() > 0.5 ? size / 2 : 2,
+          borderRadius,
         },
-        style,
+        animatedStyle,
       ]}
     />
   );
@@ -68,25 +68,78 @@ interface MatchModalProps {
 }
 
 export function MatchModal({ match, currentUserId, onDismiss }: MatchModalProps) {
-  const scale = useSharedValue(0.5);
-  const opacity = useSharedValue(0);
+  // Container animation
+  const containerScale = useSharedValue(0.5);
+  const containerOpacity = useSharedValue(0);
+
+  // Individual photo animations
+  const myPhotoScale = useSharedValue(0);
+  const myPhotoOpacity = useSharedValue(0);
+  const theirPhotoScale = useSharedValue(0);
+  const theirPhotoOpacity = useSharedValue(0);
+
+  // Heart pop animation
+  const heartScale = useSharedValue(0);
+
+  // Zodiac card animation
   const zodiacScale = useSharedValue(0);
 
   useEffect(() => {
     if (match) {
-      scale.value = withSpring(1, { damping: 12, stiffness: 180 });
-      opacity.value = withTiming(1, { duration: 300 });
+      // Haptic feedback on match reveal
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Container entrance
+      containerScale.value = withSpring(1, { damping: 12, stiffness: 180 });
+      containerOpacity.value = withTiming(1, { duration: 300 });
+
+      // Profile photos: scale 0→1 + opacity 0→1 with spring
+      myPhotoScale.value = withSpring(1, { damping: 14, stiffness: 200 });
+      myPhotoOpacity.value = withTiming(1, { duration: 350 });
+      theirPhotoScale.value = withDelay(100, withSpring(1, { damping: 14, stiffness: 200 }));
+      theirPhotoOpacity.value = withDelay(100, withTiming(1, { duration: 350 }));
+
+      // Heart: 0.5s delay, pop 0→1.2→1
+      heartScale.value = withDelay(
+        500,
+        withSequence(
+          withSpring(1.2, { damping: 8, stiffness: 300 }),
+          withSpring(1, { damping: 12, stiffness: 200 })
+        )
+      );
+
+      // Zodiac card
       zodiacScale.value = withDelay(400, withSpring(1, { damping: 10, stiffness: 150 }));
     } else {
-      scale.value = 0.5;
-      opacity.value = 0;
+      // Reset all values when modal closes
+      containerScale.value = 0.5;
+      containerOpacity.value = 0;
+      myPhotoScale.value = 0;
+      myPhotoOpacity.value = 0;
+      theirPhotoScale.value = 0;
+      theirPhotoOpacity.value = 0;
+      heartScale.value = 0;
       zodiacScale.value = 0;
     }
   }, [match]);
 
-  const contentStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: containerScale.value }],
+    opacity: containerOpacity.value,
+  }));
+
+  const myPhotoStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: myPhotoScale.value }],
+    opacity: myPhotoOpacity.value,
+  }));
+
+  const theirPhotoStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: theirPhotoScale.value }],
+    opacity: theirPhotoOpacity.value,
+  }));
+
+  const heartStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: heartScale.value }],
   }));
 
   const zodiacStyle = useAnimatedStyle(() => ({
@@ -124,34 +177,37 @@ export function MatchModal({ match, currentUserId, onDismiss }: MatchModalProps)
   return (
     <Modal transparent animationType="fade" visible={!!match} testID="match-modal">
       <View style={{ flex: 1, backgroundColor: "rgba(10,10,15,0.97)" }}>
-        {/* Confetti */}
-        {Array.from({ length: 40 }).map((_, i) => (
+        {/* Confetti: 25 pieces staggered by index * 80ms */}
+        {Array.from({ length: 25 }).map((_, i) => (
           <ConfettiPiece key={i} index={i} />
         ))}
 
         <Animated.View
           style={[
             { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
-            contentStyle,
+            containerStyle,
           ]}
         >
-          {/* Profile photos */}
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 28, gap: -20 }}>
-            {/* My photo */}
-            <View
-              style={{
-                width: 110,
-                height: 110,
-                borderRadius: 55,
-                borderWidth: 3,
-                borderColor: theme.primary,
-                overflow: "hidden",
-                shadowColor: theme.primary,
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.8,
-                shadowRadius: 20,
-                zIndex: 2,
-              }}
+          {/* Profile photos row */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 28 }}>
+            {/* My photo: scale 0→1 + opacity 0→1 */}
+            <Animated.View
+              style={[
+                {
+                  width: 110,
+                  height: 110,
+                  borderRadius: 55,
+                  borderWidth: 3,
+                  borderColor: theme.primary,
+                  overflow: "hidden",
+                  shadowColor: theme.primary,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 20,
+                  zIndex: 2,
+                },
+                myPhotoStyle,
+              ]}
             >
               {myPhoto ? (
                 <Animated.Image
@@ -160,44 +216,54 @@ export function MatchModal({ match, currentUserId, onDismiss }: MatchModalProps)
                   resizeMode="cover"
                 />
               ) : (
-                <LinearGradient colors={profileGradients[0]} style={{ width: "100%", height: "100%" }} />
+                <LinearGradient
+                  colors={profileGradients[0]}
+                  style={{ width: "100%", height: "100%" }}
+                />
               )}
-            </View>
+            </Animated.View>
 
-            {/* Heart between */}
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: theme.primary,
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 3,
-                shadowColor: theme.primary,
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 1,
-                shadowRadius: 12,
-              }}
+            {/* Heart between photos: 0.5s delay, pop 0→1.2→1 */}
+            <Animated.View
+              style={[
+                {
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: theme.primary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 3,
+                  marginHorizontal: -8,
+                  shadowColor: theme.primary,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 1,
+                  shadowRadius: 12,
+                },
+                heartStyle,
+              ]}
             >
               <Text style={{ fontSize: 18 }}>❤️</Text>
-            </View>
+            </Animated.View>
 
-            {/* Their photo */}
-            <View
-              style={{
-                width: 110,
-                height: 110,
-                borderRadius: 55,
-                borderWidth: 3,
-                borderColor: theme.accent,
-                overflow: "hidden",
-                shadowColor: theme.accent,
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.8,
-                shadowRadius: 20,
-                zIndex: 2,
-              }}
+            {/* Their photo: scale 0→1 + opacity 0→1 (100ms stagger) */}
+            <Animated.View
+              style={[
+                {
+                  width: 110,
+                  height: 110,
+                  borderRadius: 55,
+                  borderWidth: 3,
+                  borderColor: theme.accent,
+                  overflow: "hidden",
+                  shadowColor: theme.accent,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 20,
+                  zIndex: 2,
+                },
+                theirPhotoStyle,
+              ]}
             >
               {theirPhoto ? (
                 <Animated.Image
@@ -206,9 +272,12 @@ export function MatchModal({ match, currentUserId, onDismiss }: MatchModalProps)
                   resizeMode="cover"
                 />
               ) : (
-                <LinearGradient colors={profileGradients[1]} style={{ width: "100%", height: "100%" }} />
+                <LinearGradient
+                  colors={profileGradients[1]}
+                  style={{ width: "100%", height: "100%" }}
+                />
               )}
-            </View>
+            </Animated.View>
           </View>
 
           <Text
@@ -281,36 +350,50 @@ export function MatchModal({ match, currentUserId, onDismiss }: MatchModalProps)
             <View style={{ height: 28 }} />
           )}
 
-          <Pressable
-            onPress={() => {
-              onDismiss();
-              router.push(`/(app)/chat/${match.id}` as never);
-            }}
-            testID="match-message-button"
-            style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, width: "100%" })}
-          >
-            <LinearGradient
-              colors={gradients.button}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
+          {/* Button row */}
+          <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>
+            {/* Mesaj Gönder — gradient primary button */}
+            <Pressable
+              onPress={() => {
+                onDismiss();
+                router.push(`/(app)/chat/${match.id}` as never);
+              }}
+              testID="match-message-button"
+              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, flex: 1 })}
+            >
+              <LinearGradient
+                colors={gradients.button}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  paddingVertical: 16,
+                  borderRadius: 14,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Mesaj Gönder 💬</Text>
+              </LinearGradient>
+            </Pressable>
+
+            {/* Sonra — ghost button */}
+            <Pressable
+              onPress={onDismiss}
+              testID="match-dismiss-button"
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.6 : 1,
+                flex: 0,
+                paddingHorizontal: 20,
                 paddingVertical: 16,
                 borderRadius: 14,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.2)",
                 alignItems: "center",
-                marginBottom: 12,
-              }}
+                justifyContent: "center",
+              })}
             >
-              <Text style={{ color: "#fff", fontSize: 17, fontWeight: "700" }}>Mesajlaş 💬</Text>
-            </LinearGradient>
-          </Pressable>
-
-          <Pressable
-            onPress={onDismiss}
-            testID="match-dismiss-button"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <Text style={{ color: theme.textSecondary, fontSize: 16, paddingVertical: 8 }}>Sonra</Text>
-          </Pressable>
+              <Text style={{ color: theme.textSecondary, fontSize: 16, fontWeight: "600" }}>Sonra</Text>
+            </Pressable>
+          </View>
         </Animated.View>
       </View>
     </Modal>

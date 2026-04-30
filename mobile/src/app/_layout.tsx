@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, useColorScheme } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -26,6 +26,7 @@ import {
   clearBadgeCount,
 } from "@/lib/notifications";
 import type { Subscription } from "expo-notifications";
+import { theme } from "@/lib/theme";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -128,12 +129,14 @@ function RootLayoutNav() {
 
   if (isLoading) return null;
 
+  const colorScheme = useColorScheme();
+
   return (
     <View
-      style={{ flex: 1, backgroundColor: theme.base.bg }}
+      style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0D0D0D" : theme.base.bg }}
       onLayout={() => SplashScreen.hideAsync()}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
         <ErrorBoundary>
           <Stack
             screenOptions={{
@@ -153,6 +156,10 @@ function RootLayoutNav() {
                 />
                 <Stack.Screen
                   name="create-event"
+                  options={{ presentation: "modal", headerShown: false, animation: "slide_from_bottom" }}
+                />
+                <Stack.Screen
+                  name="ambassador"
                   options={{ presentation: "modal", headerShown: false, animation: "slide_from_bottom" }}
                 />
               </>

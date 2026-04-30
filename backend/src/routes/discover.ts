@@ -32,7 +32,7 @@ discoverRouter.get("/", async (c) => {
       id: { notIn: excludeIds },
       ...(myProfile.universityId ? { universityId: myProfile.universityId } : {}),
     },
-    take: 20,
+    take: 50,
     orderBy: { profilePower: "desc" },
   });
 
@@ -91,6 +91,12 @@ discoverRouter.get("/", async (c) => {
     })
   );
 
-  scored.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
-  return c.json({ data: scored });
+  // Sort: premium boost + profilePower + compatibility + random jitter for variety
+  scored.sort((a, b) => {
+    const scoreA = (a.isPremium ? 0.3 : 0) + a.profilePower * 0.007 + a.compatibilityScore * 0.005 + Math.random() * 0.1;
+    const scoreB = (b.isPremium ? 0.3 : 0) + b.profilePower * 0.007 + b.compatibilityScore * 0.005 + Math.random() * 0.1;
+    return scoreB - scoreA;
+  });
+
+  return c.json({ data: scored.slice(0, 20) });
 });

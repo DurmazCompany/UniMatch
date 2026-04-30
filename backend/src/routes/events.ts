@@ -21,22 +21,6 @@ eventsRouter.get("/", async (c) => {
   const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
   if (!myProfile) return c.json({ error: { message: "Profile not found", code: "PROFILE_NOT_FOUND" } }, 404);
 
-  const where: {
-    isActive: boolean;
-    universityId?: string;
-  } = { isActive: true };
-
-  if (myProfile.universityId) {
-    // Events are not directly linked to universityId on Event model,
-    // but Event has a `university` string field (display name).
-    // We filter by creator's universityId or match on university string.
-    // Since Event has no universityId FK, we join via createdBy profile's universityId.
-    // Instead, we use the Event.university string which is set from profile.university on creation.
-    // The safest filter: get events whose createdBy profile has the same universityId.
-    // We'll do an include-based approach via Prisma.
-  }
-
-  // Fetch all active events, then filter by university
   const allEvents = await prisma.event.findMany({
     where: { isActive: true },
     include: {
@@ -50,7 +34,6 @@ eventsRouter.get("/", async (c) => {
     orderBy: { date: "asc" },
   });
 
-  // Filter by university if the user has a universityId set
   const filteredEvents = myProfile.universityId
     ? allEvents.filter(
         (e) =>
@@ -66,6 +49,10 @@ eventsRouter.get("/", async (c) => {
     date: event.date,
     location: event.location,
     university: event.university,
+    isPaid: event.isPaid,
+    ticketPrice: event.ticketPrice,
+    maxAttendees: event.maxAttendees,
+    ticketsSold: event.ticketsSold,
     participantCount: event.participants.length,
     isJoined: event.participants.some((p) => p.profileId === myProfile.id),
   }));
@@ -83,6 +70,9 @@ eventsRouter.post(
       description: z.string().optional(),
       date: z.string().min(1),
       location: z.string().min(1),
+      isPaid: z.boolean().optional().default(false),
+      ticketPrice: z.number().positive().optional(),
+      maxAttendees: z.number().int().positive().optional(),
     })
   ),
   async (c) => {
@@ -111,6 +101,9 @@ eventsRouter.post(
         university: myProfile.university,
         createdById: myProfile.id,
         isActive: true,
+        isPaid: body.isPaid ?? false,
+        ticketPrice: body.isPaid ? body.ticketPrice : null,
+        maxAttendees: body.maxAttendees ?? null,
       },
     });
 
@@ -118,7 +111,7 @@ eventsRouter.post(
   }
 );
 
-// POST /:id/join — Join an event (idempotent)
+// POST /:id/join — Join an event
 eventsRouter.post("/:id/join", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
@@ -127,26 +120,49 @@ eventsRouter.post("/:id/join", async (c) => {
   if (!myProfile) return c.json({ error: { message: "Profile not found", code: "PROFILE_NOT_FOUND" } }, 404);
 
   const eventId = c.req.param("id");
-  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+    include: { participants: { select: { profileId: true } } },
+  });
   if (!event || !event.isActive) {
     return c.json({ error: { message: "Event not found", code: "EVENT_NOT_FOUND" } }, 404);
   }
 
-  await prisma.eventParticipant.upsert({
-    where: {
-      eventId_profileId: {
+  // Check capacity
+  if (event.maxAttendees !== null && event.ticketsSold >= event.maxAttendees) {
+    return c.json({ error: { message: "Etkinlik kapasitesi doldu", code: "EVENT_FULL" } }, 400);
+  }
+
+  // Check if already joined
+  const alreadyJoined = event.participants.some((p) => p.profileId === myProfile.id);
+  if (alreadyJoined) {
+    return c.json({ data: { success: true, alreadyJoined: true } });
+  }
+
+  // For paid events: record with hasPaid: false (Shopier webhook will update later)
+  // For free events: record with hasPaid: true
+  await prisma.$transaction([
+    prisma.eventParticipant.create({
+      data: {
         eventId,
         profileId: myProfile.id,
+        hasPaid: !event.isPaid,
       },
-    },
-    create: {
-      eventId,
-      profileId: myProfile.id,
-    },
-    update: {},
-  });
+    }),
+    prisma.event.update({
+      where: { id: eventId },
+      data: { ticketsSold: { increment: 1 } },
+    }),
+  ]);
 
-  return c.json({ data: { success: true } });
+  return c.json({
+    data: {
+      success: true,
+      isPaid: event.isPaid,
+      requiresPayment: event.isPaid,
+      ticketPrice: event.ticketPrice,
+    },
+  });
 });
 
 // DELETE /:id/join — Leave an event
@@ -159,12 +175,58 @@ eventsRouter.delete("/:id/join", async (c) => {
 
   const eventId = c.req.param("id");
 
-  await prisma.eventParticipant.deleteMany({
-    where: {
-      eventId,
-      profileId: myProfile.id,
-    },
+  const deleted = await prisma.eventParticipant.deleteMany({
+    where: { eventId, profileId: myProfile.id },
   });
 
+  if (deleted.count > 0) {
+    await prisma.event.update({
+      where: { id: eventId },
+      data: { ticketsSold: { decrement: 1 } },
+    });
+  }
+
   return c.json({ data: { success: true } });
+});
+
+// GET /:id/attendees — List attendees (only visible to event creator)
+eventsRouter.get("/:id/attendees", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+
+  const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
+  if (!myProfile) return c.json({ error: { message: "Profile not found", code: "PROFILE_NOT_FOUND" } }, 404);
+
+  const eventId = c.req.param("id");
+  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  if (!event || !event.isActive) {
+    return c.json({ error: { message: "Event not found", code: "EVENT_NOT_FOUND" } }, 404);
+  }
+
+  if (event.createdById !== myProfile.id) {
+    return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
+  }
+
+  const participants = await prisma.eventParticipant.findMany({
+    where: { eventId },
+    include: {
+      profile: {
+        select: { id: true, name: true, university: true, department: true, year: true },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const result = participants.map((p) => ({
+    profileId: p.profileId,
+    name: p.profile.name,
+    university: p.profile.university,
+    department: p.profile.department,
+    year: p.profile.year,
+    hasPaid: p.hasPaid,
+    paymentRef: p.paymentRef,
+    joinedAt: p.createdAt,
+  }));
+
+  return c.json({ data: result });
 });

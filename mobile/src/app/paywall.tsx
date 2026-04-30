@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, ReactElement } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { theme } from "@/lib/theme";
+import { theme, useTheme } from "@/lib/theme";
 import {
   getOfferings,
   purchasePackage,
@@ -31,6 +31,8 @@ import {
   Check,
 } from "lucide-react-native";
 
+type TierId = "crush" | "flort" | "ask";
+
 // Package tier definitions
 interface PackageFeature {
   icon: typeof Heart;
@@ -39,11 +41,13 @@ interface PackageFeature {
 }
 
 interface PackageTier {
-  id: string;
+  id: TierId;
   storeIdentifier: string | null;
   name: string;
   price: string;
   period: string;
+  perMonthHint?: string;
+  savings?: string;
   isFree?: boolean;
   isRecommended?: boolean;
   accentColor: string;
@@ -62,7 +66,7 @@ const TIER_DEFINITIONS: PackageTier[] = [
     isFree: true,
     accentColor: "#6B7280",
     features: [
-      { icon: Heart, text: "Gunluk 10 begeni hakki", included: true },
+      { icon: Heart, text: "Günlük 5 beğeni", included: true },
       { icon: Star, text: "Gunluk 1 super begeni", included: true },
       { icon: Zap, text: "Kesif boost", included: false },
       { icon: Eye, text: "Seni begenenleri gor", included: false },
@@ -73,7 +77,7 @@ const TIER_DEFINITIONS: PackageTier[] = [
     id: "flort",
     storeIdentifier: "crush_monthly",
     name: "Flort",
-    price: "49.99",
+    price: "₺79,99",
     period: "/ay",
     isRecommended: true,
     accentColor: theme.primary,
@@ -89,8 +93,10 @@ const TIER_DEFINITIONS: PackageTier[] = [
     id: "ask",
     storeIdentifier: "lover_yearly",
     name: "Ask",
-    price: "99.99",
+    price: "₺58,25",
     period: "/ay",
+    perMonthHint: "Yıllık ödenir · ₺699/yıl",
+    savings: "%27 tasarruf",
     accentColor: "#FFD700",
     features: [
       { icon: Heart, text: "Sinirsiz begeni", included: true },
@@ -100,6 +106,26 @@ const TIER_DEFINITIONS: PackageTier[] = [
       { icon: RotateCcw, text: "5 geri alma hakki", included: true },
     ],
   },
+];
+
+interface AddonPackage {
+  id: string;
+  label: string;
+  price: string;
+  storeId: string;
+  badge?: string;
+}
+
+const BOOST_PACKAGES: AddonPackage[] = [
+  { id: "boost_1", label: "1 Boost", price: "₺19,99", storeId: "boost_pack_1" },
+  { id: "boost_5", label: "5 Boost", price: "₺79,99", storeId: "boost_pack_5", badge: "İyi değer" },
+  { id: "boost_10", label: "10 Boost", price: "₺139,99", storeId: "boost_pack_10", badge: "En iyi" },
+];
+
+const SUPER_LIKE_PACKAGES: AddonPackage[] = [
+  { id: "sl_5", label: "5 Süper Beğeni", price: "₺14,99", storeId: "super_like_pack_5" },
+  { id: "sl_15", label: "15 Süper Beğeni", price: "₺34,99", storeId: "super_like_pack_15", badge: "Popüler" },
+  { id: "sl_30", label: "30 Süper Beğeni", price: "₺59,99", storeId: "super_like_pack_30" },
 ];
 
 // Feature row component for package cards
@@ -151,32 +177,113 @@ function FeatureRow({
   );
 }
 
+function AddonCard({
+  addon,
+  icon,
+  onPress,
+  loading,
+}: {
+  addon: AddonPackage;
+  icon: ReactElement;
+  onPress: () => void;
+  loading: boolean;
+}) {
+  return (
+    <Pressable
+      testID={`addon-${addon.id}`}
+      onPress={onPress}
+      disabled={loading}
+      style={({ pressed }) => ({ opacity: pressed || loading ? 0.7 : 1 })}
+    >
+      <View
+        style={{
+          backgroundColor: theme.surface,
+          borderRadius: 16,
+          padding: 12,
+          borderWidth: 1,
+          borderColor: theme.borderDefault,
+          alignItems: "center",
+          minWidth: 100,
+        }}
+      >
+        {addon.badge ? (
+          <View
+            style={{
+              position: "absolute",
+              top: -9,
+              backgroundColor: theme.primary,
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 2,
+            }}
+          >
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 10,
+                fontFamily: "PlusJakartaSans_600SemiBold",
+              }}
+            >
+              {addon.badge}
+            </Text>
+          </View>
+        ) : null}
+
+        {loading ? (
+          <ActivityIndicator color={theme.primary} size="small" />
+        ) : (
+          icon
+        )}
+
+        <Text
+          style={{
+            color: theme.textPrimary,
+            fontSize: 13,
+            fontFamily: "PlusJakartaSans_600SemiBold",
+            marginTop: 8,
+            textAlign: "center",
+          }}
+        >
+          {addon.label}
+        </Text>
+        <Text
+          style={{
+            color: theme.textSecondary,
+            fontSize: 12,
+            fontFamily: "PlusJakartaSans_400Regular",
+            marginTop: 4,
+          }}
+        >
+          {addon.price}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function getPackageIcon(pkg: PackageTier) {
+  switch (pkg.id) {
+    case "ask":
+      return <Crown size={24} color={pkg.accentColor} />;
+    case "flort":
+      return <Heart size={24} color={pkg.accentColor} />;
+    default:
+      return <Star size={24} color={pkg.accentColor} />;
+  }
+}
+
 // Package card component
 function PackageCard({
   pkg,
   onSelect,
-  loading,
   selectedId,
 }: {
   pkg: PackageTier;
-  onSelect: (id: string) => void;
-  loading: boolean;
-  selectedId: string | null;
+  onSelect: (id: TierId) => void;
+  selectedId: TierId | null;
 }) {
   const isSelected = selectedId === pkg.id;
   const isRecommended = pkg.isRecommended;
-
-  // Get the right icon for each package
-  const getPackageIcon = () => {
-    switch (pkg.id) {
-      case "ask":
-        return <Crown size={24} color={pkg.accentColor} />;
-      case "flort":
-        return <Heart size={24} color={pkg.accentColor} />;
-      default:
-        return <Star size={24} color={pkg.accentColor} />;
-    }
-  };
 
   return (
     <View style={{ marginBottom: 16 }}>
@@ -240,7 +347,7 @@ function PackageCard({
               }}
             >
               <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {getPackageIcon()}
+                {getPackageIcon(pkg)}
                 <Text
                   style={{
                     color: theme.textPrimary,
@@ -309,44 +416,33 @@ function PackageCard({
               ))}
             </View>
 
-            {/* Select button (only for paid packages) */}
-            {!pkg.isFree && (
-              <Pressable
-                testID={`select-${pkg.id}-button`}
-                onPress={() => onSelect(pkg.id)}
-                disabled={!!(loading && isSelected)}
-                style={{ marginTop: 16 }}
-              >
-                <LinearGradient
-                  colors={
-                    isRecommended
-                      ? [theme.primary, "#FF5E73"]
-                      : [pkg.accentColor, pkg.accentColor]
-                  }
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{
-                    paddingVertical: 14,
-                    borderRadius: 12,
-                    alignItems: "center",
-                  }}
-                >
-                  {loading && isSelected ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text
-                      style={{
-                        color: "#FFFFFF",
-                        fontSize: 16,
-                        fontFamily: "PlusJakartaSans_600SemiBold",
-                      }}
-                    >
-                      {pkg.name} Paketi Sec
-                    </Text>
-                  )}
-                </LinearGradient>
-              </Pressable>
-            )}
+            {!pkg.isFree && (pkg.perMonthHint || pkg.savings) ? (
+              <View style={{ marginTop: 12 }}>
+                {pkg.perMonthHint ? (
+                  <Text
+                    style={{
+                      color: theme.textSecondary,
+                      fontSize: 12,
+                      fontFamily: "PlusJakartaSans_400Regular",
+                    }}
+                  >
+                    {pkg.perMonthHint}
+                  </Text>
+                ) : null}
+                {pkg.savings ? (
+                  <Text
+                    style={{
+                      color: theme.success,
+                      fontSize: 12,
+                      marginTop: 2,
+                      fontFamily: "PlusJakartaSans_600SemiBold",
+                    }}
+                  >
+                    {pkg.savings}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </View>
       </Pressable>
@@ -355,9 +451,11 @@ function PackageCard({
 }
 
 export default function PaywallScreen() {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<TierId>("crush");
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [purchasingAddonId, setPurchasingAddonId] = useState<string | null>(null);
 
   // Fetch live offerings from RevenueCat
   const { data: rcPackages, isLoading: loadingOfferings } = useQuery({
@@ -366,16 +464,20 @@ export default function PaywallScreen() {
   });
 
   // Build display tiers by merging static definitions with live RC prices
-  const packages: PackageTier[] = TIER_DEFINITIONS.map((tier) => {
-    if (tier.isFree || tier.storeIdentifier === null) return tier;
-    const rcPkg = rcPackages?.find(
-      (p: PurchasesPackage) => p.product.identifier === tier.storeIdentifier
-    );
-    if (rcPkg) {
-      return { ...tier, price: rcPkg.product.priceString, _rcPackage: rcPkg };
-    }
-    return tier;
-  });
+  const packages: PackageTier[] = useMemo(
+    () =>
+      TIER_DEFINITIONS.map((tier) => {
+        if (tier.isFree || tier.storeIdentifier === null) return tier;
+        const rcPkg = rcPackages?.find(
+          (p: PurchasesPackage) => p.product.identifier === tier.storeIdentifier
+        );
+        if (rcPkg) {
+          return { ...tier, price: rcPkg.product.priceString, _rcPackage: rcPkg };
+        }
+        return tier;
+      }),
+    [rcPackages]
+  );
 
   // Purchase mutation
   const purchaseMutation = useMutation({
@@ -410,19 +512,51 @@ export default function PaywallScreen() {
     },
   });
 
-  const handleSelectPackage = (packageId: string) => {
-    if (packageId === "crush") {
-      // Free tier — just close
+  const addonMutation = useMutation({
+    mutationFn: (pkg: PurchasesPackage) => purchasePackage(pkg),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setPurchasingAddonId(null);
+    },
+    onError: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setPurchaseError("Satin alma basarisiz oldu. Lutfen tekrar deneyin.");
+      setPurchasingAddonId(null);
+    },
+  });
+
+  const handlePurchaseAddon = (addon: AddonPackage) => {
+    const rcPkg = rcPackages?.find(
+      (p: PurchasesPackage) => p.product.identifier === addon.storeId
+    );
+    if (!rcPkg) {
+      setPurchaseError("Bu paket su an mevcut degil.");
+      return;
+    }
+    setPurchaseError(null);
+    setPurchasingAddonId(addon.id);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    addonMutation.mutate(rcPkg);
+  };
+
+  const selectedTier = packages.find((tier) => tier.id === selectedId) ?? packages[0];
+
+  const handleSelectPackage = (packageId: TierId) => {
+    setPurchaseError(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedId(packageId);
+  };
+
+  const handleContinue = () => {
+    if (!selectedTier) return;
+
+    if (selectedTier.isFree) {
       router.back();
       return;
     }
 
-    setPurchaseError(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedPackage(packageId);
-
-    const tier = packages.find((p) => p.id === packageId);
-    const rcPkg = tier?._rcPackage;
+    const rcPkg = selectedTier._rcPackage;
     if (rcPkg) {
       purchaseMutation.mutate(rcPkg);
     } else {
@@ -466,9 +600,22 @@ export default function PaywallScreen() {
         <X size={20} color="#fff" />
       </Pressable>
 
+      <Text
+        style={{
+          color: theme.textPlaceholder,
+          fontSize: 12,
+          textAlign: "center",
+          marginTop: insets.top + 18,
+          marginHorizontal: 20,
+          fontFamily: "PlusJakartaSans_400Regular",
+        }}
+      >
+        İstediğin zaman iptal edebilirsin
+      </Text>
+
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 20,
+          paddingTop: 12,
           paddingBottom: insets.bottom + 40,
           paddingHorizontal: 20,
         }}
@@ -538,11 +685,48 @@ export default function PaywallScreen() {
               key={pkg.id}
               pkg={pkg}
               onSelect={handleSelectPackage}
-              loading={isPurchasing}
-              selectedId={selectedPackage}
+              selectedId={selectedId}
             />
           ))
         )}
+
+        <Pressable
+          onPress={handleContinue}
+          disabled={isPurchasing || loadingOfferings}
+          testID="paywall-continue-button"
+          style={({ pressed }) => ({
+            opacity: pressed || isPurchasing || loadingOfferings ? 0.8 : 1,
+            marginTop: 8,
+            marginBottom: 12,
+          })}
+        >
+          <LinearGradient
+            colors={[theme.primary, "#FF5E73"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              paddingVertical: 14,
+              borderRadius: 12,
+              alignItems: "center",
+            }}
+          >
+            {isPurchasing ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 16,
+                  fontFamily: "PlusJakartaSans_600SemiBold",
+                }}
+              >
+                {selectedTier?.isFree
+                  ? "Ücretsiz devam et"
+                  : `Şimdi başla · ${selectedTier.price}${selectedTier.period}`}
+              </Text>
+            )}
+          </LinearGradient>
+        </Pressable>
 
         {/* Error message */}
         {purchaseError !== null ? (
@@ -567,6 +751,92 @@ export default function PaywallScreen() {
             </Text>
           </View>
         ) : null}
+
+        {/* À la carte section */}
+        <View
+          style={{
+            marginTop: 8,
+            marginBottom: 8,
+            paddingTop: 20,
+            borderTopWidth: 1,
+            borderTopColor: "rgba(255,255,255,0.08)",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 14,
+            }}
+          >
+            <Sparkles size={18} color={theme.primary} />
+            <Text
+              style={{
+                color: theme.textPrimary,
+                fontSize: 16,
+                fontFamily: "Syne_700Bold",
+              }}
+            >
+              Tek seferlik ekstralar
+            </Text>
+          </View>
+
+          <Text
+            style={{
+              color: theme.textSecondary,
+              fontSize: 12,
+              fontFamily: "PlusJakartaSans_600SemiBold",
+              marginBottom: 10,
+            }}
+          >
+            Boost
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={{ gap: 10 }}
+          >
+            {BOOST_PACKAGES.map((addon) => (
+              <AddonCard
+                key={addon.id}
+                addon={addon}
+                icon={<Zap size={20} color={theme.primary} />}
+                onPress={() => handlePurchaseAddon(addon)}
+                loading={purchasingAddonId === addon.id}
+              />
+            ))}
+          </ScrollView>
+
+          <Text
+            style={{
+              color: theme.textSecondary,
+              fontSize: 12,
+              fontFamily: "PlusJakartaSans_600SemiBold",
+              marginBottom: 10,
+              marginTop: 16,
+            }}
+          >
+            Süper Beğeni
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={{ gap: 10 }}
+          >
+            {SUPER_LIKE_PACKAGES.map((addon) => (
+              <AddonCard
+                key={addon.id}
+                addon={addon}
+                icon={<Star size={20} color="#FFD700" />}
+                onPress={() => handlePurchaseAddon(addon)}
+                loading={purchasingAddonId === addon.id}
+              />
+            ))}
+          </ScrollView>
+        </View>
 
         {/* Restore purchases */}
         <Pressable

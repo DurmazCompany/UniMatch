@@ -163,26 +163,32 @@ model Message {
 }
 
 model Event {
-  id           String    @id @default(cuid())
-  title        String
-  description  String?
-  date         DateTime
-  location     String
-  createdById  String
-  createdBy    Profile   @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  university   String?
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  participants EventParticipant[]
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  date          DateTime
+  location      String
+  createdById   String
+  createdBy     Profile   @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  university    String?
+  isActive      Boolean   @default(true)
+  isPaid        Boolean   @default(false)
+  ticketPrice   Float?
+  maxAttendees  Int?
+  ticketsSold   Int       @default(0)
+  createdAt     DateTime  @default(now())
+  participants  EventParticipant[]
 }
 
 model EventParticipant {
-  id        String   @id @default(cuid())
-  eventId   String
-  profileId String
-  createdAt DateTime @default(now())
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  eventId    String
+  profileId  String
+  hasPaid    Boolean  @default(false)
+  paymentRef String?
+  createdAt  DateTime @default(now())
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, profileId])
 }

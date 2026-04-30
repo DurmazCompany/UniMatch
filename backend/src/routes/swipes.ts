@@ -53,7 +53,7 @@ swipesRouter.post("/", async (c) => {
   const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
   if (!myProfile) return c.json({ error: { message: "Profile not found" } }, 404);
 
-  // Check daily swipe limit (15 for free users)
+  // Check daily swipe limit (5 for free users)
   const today = new Date().toDateString();
   const lastSwipeDay = myProfile.lastSwipeDate ? new Date(myProfile.lastSwipeDate).toDateString() : null;
 
@@ -65,8 +65,8 @@ swipesRouter.post("/", async (c) => {
     myProfile.swipesToday = 0;
   }
 
-  if (myProfile.swipesToday >= 15) {
-    return c.json({ error: { message: "Daily swipe limit reached", code: "LIMIT_REACHED" } }, 429);
+  if (myProfile.swipesToday >= 5) {
+    return c.json({ error: { message: "Günlük beğeni limitine ulaştın. Daha fazlası için Premium'a geç!", code: "LIMIT_REACHED" } }, 429);
   }
 
   // Record swipe
@@ -273,7 +273,7 @@ swipesRouter.post("/", async (c) => {
   return c.json({
     data: {
       match,
-      swipesLeft: 15 - (updateData.swipesToday ?? newSwipesToday),
+      swipesLeft: 5 - (updateData.swipesToday ?? newSwipesToday),
       streakCount: newStreak,
       streakJustReached,
     },

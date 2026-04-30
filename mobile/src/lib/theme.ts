@@ -1,3 +1,5 @@
+import { useColorScheme } from "react-native";
+
 // UniMatch Theme - New Light Theme System
 const female = {
   accent: "#D4537E",
@@ -42,6 +44,9 @@ export const theme = {
   surface: base.surface,
   surfaceElevated: base.surface,
   inputBackground: base.surface,
+  cardBackground: base.surface,
+  cardShadow: "rgba(0,0,0,0.06)",
+  gradientStart: "#FBEAF0",
 
   // Primary colors (Defaulting to female accent for brand)
   primary: female.accent,
@@ -65,6 +70,9 @@ export const theme = {
   error: "#FF3B30",
   warning: "#FFCC00",
 
+  streakFire: "#FF9500",
+  streakDanger: "#FF3B30",
+
   // Messages
   messageSent: female.accent,
   messageReceived: base.surface,
@@ -83,6 +91,52 @@ export const theme = {
   tabBarActive: female.accent,
   tabBarInactive: base.hint,
 };
+
+// Dark theme — used when system prefers dark mode
+export const darkTheme = {
+  ...theme,
+  background: "#0D0D0D",
+  surface: "#1A1A1A",
+  surfaceElevated: "#222222",
+  inputBackground: "#1E1E1E",
+  cardBackground: "#1A1A1A",
+  cardShadow: "rgba(0,0,0,0.3)",
+  gradientStart: "#1A0D12",
+  textPrimary: "#F5F5F5",
+  textSecondary: "#A0A0A0",
+  textPlaceholder: "#606060",
+  borderDefault: "rgba(255,255,255,0.08)",
+  inputBorder: "rgba(255,255,255,0.12)",
+  messageSent: "#E8445A",
+  messageReceived: "#2C2C2E",
+  messageTextReceived: "#FFFFFF",
+  tabBarBackground: "#111111",
+  tabBarBorder: "rgba(255,255,255,0.1)",
+  tabBarActive: "#E8445A",
+  tabBarInactive: "#48484A",
+  base: {
+    bg: "#0D0D0D",
+    surface: "#1A1A1A",
+    text: "#F5F5F5",
+    muted: "#A0A0A0",
+    hint: "#606060",
+    border: "rgba(255,255,255,0.08)",
+  },
+  female: {
+    ...female,
+    accent: "#E8678A",
+    pale: "#2D1520",
+    mid: "#5C2035",
+    border: "rgba(232,103,138,0.2)",
+  },
+};
+
+export type ThemeColors = typeof theme;
+
+export function useTheme(): ThemeColors {
+  const colorScheme = useColorScheme();
+  return colorScheme === "dark" ? darkTheme : theme;
+}
 
 // Gradient presets for LinearGradient
 export const gradients = {

@@ -18,7 +18,7 @@ import { Match, Profile } from "@/lib/types";
 import { useSession } from "@/lib/auth/use-session";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { theme } from "@/lib/theme";
+import { theme, useTheme } from "@/lib/theme";
 import { Search, SlidersHorizontal, CheckCheck } from "lucide-react-native";
 
 function getProfileColor(id: string): [string, string] {
@@ -236,6 +236,7 @@ function ConversationRow({ match, myUserId }: { match: Match; myUserId: string }
 }
 
 export default function MatchesScreen() {
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { data: session } = useSession();
   const myUserId = session?.user?.id ?? "";
