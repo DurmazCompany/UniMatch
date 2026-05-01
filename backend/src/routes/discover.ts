@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
 import { calculateCompatibility } from "../lib/compatibility";
+import { getBlockedUserIds } from "../middleware/privacy";
 
 export const discoverRouter = new Hono<{
   Variables: {
@@ -24,8 +25,19 @@ discoverRouter.get("/", async (c) => {
   });
   const swipedIds = swiped.map(s => s.swipedId);
 
+  // Get blocked user IDs (both directions)
+  const blockedUserIds = await getBlockedUserIds(user.id);
+  // Convert profile-level blocked ids: get Profile.id for each blocked User.id
+  const blockedProfiles = blockedUserIds.size > 0
+    ? await prisma.profile.findMany({
+        where: { userId: { in: Array.from(blockedUserIds) } },
+        select: { id: true },
+      })
+    : [];
+  const blockedProfileIds = blockedProfiles.map(p => p.id);
+
   // Build candidate filter — apply university filter if the user has a universityId
-  const excludeIds = [myProfile.id, ...swipedIds];
+  const excludeIds = [myProfile.id, ...swipedIds, ...blockedProfileIds];
 
   const candidates = await prisma.profile.findMany({
     where: {

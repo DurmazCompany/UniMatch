@@ -121,7 +121,7 @@ export default function AmbassadorScreen() {
   const insets = useSafeAreaInsets();
   const [copied, setCopied] = useState(false);
 
-  const { data: stats, isLoading } = useQuery<ReferralStats>({
+  const { data: stats, isLoading } = useQuery<ReferralStats | null>({
     queryKey: ["referral-stats"],
     queryFn: () => api.get<ReferralStats>("/api/referrals/stats"),
   });

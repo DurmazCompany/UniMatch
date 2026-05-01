@@ -5,6 +5,7 @@ import { auth } from "../auth";
 import { randomUUID } from "crypto";
 import { notifyMatch } from "./sse";
 import { sendPushNotification } from "../lib/push";
+import { checkNotBlocked, BlockedError } from "../middleware/privacy";
 
 const messageSchema = z.object({
   content: z.string().min(1).max(2000),
@@ -128,8 +129,22 @@ matchesRouter.get("/:id/messages", async (c) => {
     return c.json({ error: { message: "Match has expired", code: "EXPIRED" } }, 410);
   }
 
+  // Block kontrolü: karşı taraf engellenmişse mesajları gösterme
+  const otherProfileId = match.user1Id === profile.id ? match.user2Id : match.user1Id;
+  const otherProfile = await prisma.profile.findUnique({ where: { id: otherProfileId }, select: { userId: true } });
+  if (otherProfile) {
+    try {
+      await checkNotBlocked(user.id, otherProfile.userId);
+    } catch (err) {
+      if (err instanceof BlockedError) {
+        return c.json({ error: { message: err.message, code: err.code } }, 403);
+      }
+      throw err;
+    }
+  }
+
   const messages = await prisma.message.findMany({
-    where: { matchId },
+    where: { matchId, isDeleted: false },
     include: { sender: true },
     orderBy: { createdAt: "asc" },
   });
@@ -164,6 +179,20 @@ matchesRouter.post("/:id/messages", async (c) => {
   // Verify match is still active
   if (!match.isActive || new Date(match.expiresAt) < new Date()) {
     return c.json({ error: { message: "Match has expired", code: "EXPIRED" } }, 410);
+  }
+
+  // Block kontrolü: engellenmiş kullanıcıya mesaj gönderilemez
+  const otherProfileIdForSend = match.user1Id === profile.id ? match.user2Id : match.user1Id;
+  const otherProfileForSend = await prisma.profile.findUnique({ where: { id: otherProfileIdForSend }, select: { userId: true } });
+  if (otherProfileForSend) {
+    try {
+      await checkNotBlocked(user.id, otherProfileForSend.userId);
+    } catch (err) {
+      if (err instanceof BlockedError) {
+        return c.json({ error: { message: err.message, code: err.code } }, 403);
+      }
+      throw err;
+    }
   }
 
   const body = await c.req.json();

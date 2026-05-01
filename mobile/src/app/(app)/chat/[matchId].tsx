@@ -28,6 +28,7 @@ import { tr } from "date-fns/locale";
 import { CheckCheck, Send, ChevronLeft, MoreVertical, Mic, X, Snowflake, Image as ImageIcon, Eye, Flame } from "lucide-react-native";
 import { useVoiceRecording } from "@/lib/hooks/useVoiceRecording";
 import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
+import { useScreenProtectionOnFocus } from "@/lib/hooks/useScreenProtection";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -167,6 +168,9 @@ function EphemeralPhotoViewer({
 }
 
 export default function ChatScreen() {
+  // 🔒 Ekran görüntüsü / kayıt koruması (tab navigation'da her focus'ta devreye girer)
+  useScreenProtectionOnFocus();
+
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
   const insets = useSafeAreaInsets();
   const { data: session } = useSession();

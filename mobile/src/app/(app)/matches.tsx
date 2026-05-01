@@ -20,6 +20,7 @@ import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { theme, useTheme } from "@/lib/theme";
 import { Search, SlidersHorizontal, CheckCheck } from "lucide-react-native";
+import { useScreenProtection } from "@/lib/hooks/useScreenProtection";
 
 function getProfileColor(id: string): [string, string] {
   const colors: [string, string][] = [
@@ -236,6 +237,9 @@ function ConversationRow({ match, myUserId }: { match: Match; myUserId: string }
 }
 
 export default function MatchesScreen() {
+  // 🔒 Match fotoğrafları ve eşleşme anını koru
+  useScreenProtection();
+
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { data: session } = useSession();

@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle } from "react";
 import { View, Text, Dimensions } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useSharedValue,
@@ -12,9 +13,10 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
-import { Profile } from "@/lib/types";
+import { Profile, Match } from "@/lib/types";
 import { theme } from "@/lib/theme";
 import { getZodiacSign, getZodiacDisplay } from "@/lib/astrology";
+import { BlurGate } from "@/components/BlurGate";
 
 export interface SwipeCardRef {
   swipeLeft: () => void;
@@ -43,10 +45,18 @@ interface SwipeCardProps {
   onSwipe: (direction: "like" | "pass" | "super") => void;
   isTop: boolean;
   index: number;
+  /** Fotoğrafın görünür olup olmadığını belirler. Örn: match olana kadar gizli tutmak için */
+  isRevealed?: boolean;
 }
 
 export const SwipeCard = forwardRef<SwipeCardRef, SwipeCardProps>(
-  function SwipeCard({ profile, onSwipe, isTop, index }, ref) {
+  function SwipeCard({ profile, onSwipe, isTop, index, isRevealed }, ref) {
+  const { data: matches } = useQuery<Match[] | null>({ queryKey: ["matches"] });
+  const hasMatch = matches?.some(m => m.user1Id === profile.id || m.user2Id === profile.id) ?? false;
+  
+  // Eğer isRevealed dışarıdan geçilmediyse, match durumuna bak
+  const finalIsRevealed = isRevealed !== undefined ? isRevealed : hasMatch;
+
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
 
@@ -172,28 +182,30 @@ export const SwipeCard = forwardRef<SwipeCardRef, SwipeCardProps>(
         testID={`swipe-card-${profile.id}`}
       >
         {/* Photo or Gradient Background */}
-        {photos.length > 0 ? (
-          <Animated.Image
-            source={{ uri: photos[0] }}
-            style={{ position: "absolute", width: "100%", height: "100%" }}
-            resizeMode="cover"
-          />
-        ) : (
-          <LinearGradient
-            colors={["#2C1A1A", "#1A0D0D"]}
-            style={{
-              position: "absolute",
-              width: "100%",
-              height: "100%",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: "rgba(255,255,255,0.2)", fontSize: 100, fontWeight: "700" }}>
-              {profile.name[0]?.toUpperCase()}
-            </Text>
-          </LinearGradient>
-        )}
+        <BlurGate isRevealed={finalIsRevealed} intensity={85} tint="dark">
+          {photos.length > 0 ? (
+            <Animated.Image
+              source={{ uri: photos[0] }}
+              style={{ position: "absolute", width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          ) : (
+            <LinearGradient
+              colors={["#2C1A1A", "#1A0D0D"]}
+              style={{
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "rgba(255,255,255,0.2)", fontSize: 100, fontWeight: "700" }}>
+                {profile.name[0]?.toUpperCase()}
+              </Text>
+            </LinearGradient>
+          )}
+        </BlurGate>
 
         {/* Strong 4-stop bottom gradient */}
         <LinearGradient

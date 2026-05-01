@@ -17,6 +17,8 @@ import { seedRouter } from "./routes/seed";
 import { sseRouter } from "./routes/sse";
 import { eventsRouter } from "./routes/events";
 import { referralsRouter } from "./routes/referrals";
+import { blocksRouter } from "./routes/blocks";
+import { mediaRouter } from "./routes/media";
 
 const app = new Hono<{
   Variables: {
@@ -77,6 +79,8 @@ app.route("/api/seed", seedRouter);
 app.route("/api/sse", sseRouter);
 app.route("/api/events", eventsRouter);
 app.route("/api/referrals", referralsRouter);
+app.route("/api/blocks", blocksRouter);
+app.route("/api/media", mediaRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

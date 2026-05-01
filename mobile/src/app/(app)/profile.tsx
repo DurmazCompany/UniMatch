@@ -20,6 +20,9 @@ import { useInvalidateSession } from "@/lib/auth/use-session";
 import { Profile, WhoLikedMeResponse } from "@/lib/types";
 import { theme, gradients } from "@/lib/theme";
 import { getZodiacSign, getZodiacInfo } from "@/lib/astrology";
+import { useScreenProtection } from "@/lib/hooks/useScreenProtection";
+import { usePrivacyStore } from "@/lib/state/privacyStore";
+import { Alert } from "react-native";
 
 import {
   Bell, Shield, CircleHelp, LogOut, ChevronRight, Settings,
@@ -215,6 +218,10 @@ function parsePhotos(photos: string | string[]): string[] {
 }
 
 export default function ProfileScreen() {
+  // 🔒 Ekran görüntüsü / kayıt koruması
+  useScreenProtection();
+
+  const blockUser = usePrivacyStore((state) => state.blockUser);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const invalidateSession = useInvalidateSession();
@@ -270,6 +277,36 @@ export default function ProfileScreen() {
     await authClient.signOut();
     await invalidateSession();
     router.replace("/");
+  };
+
+  const handleBlockUser = async () => {
+    if (!profile) return;
+    
+    Alert.alert(
+      "Kullanıcıyı Engelle",
+      "Bu kullanıcıyı engellemek istediğinize emin misiniz? (Bir daha eşleşemezsiniz)",
+      [
+        { text: "İptal", style: "cancel" },
+        {
+          text: "Engelle",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Not: profile.tsx şu an "my-profile" için çalışıyor olabilir, 
+              // ancak ileride dış profiller için kullanılacaksa profile.userId engellenecektir.
+              await blockUser(profile.userId);
+              Alert.alert("Başarılı", "Kullanıcı engellendi.");
+              // router.back() eğer bu ekran push edilmişse çalışır, tab ise hiçbir şey yapmaz
+              if (router.canGoBack()) {
+                router.back();
+              }
+            } catch (error: any) {
+              Alert.alert("Hata", error.message || "Engelleme işlemi başarısız oldu.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (isLoading) {
@@ -575,6 +612,12 @@ export default function ProfileScreen() {
             />
             <SettingsItem icon={<Shield size={20} color={theme.textSecondary} />} label="Gizlilik ve Güvenlik" />
             <SettingsItem icon={<CircleHelp size={20} color={theme.textSecondary} />} label="Yardım ve Destek" />
+            <SettingsItem
+              icon={<Shield size={20} color={theme.error} />}
+              label="Engelle"
+              onPress={handleBlockUser}
+              isDestructive
+            />
             <SettingsItem
               icon={<LogOut size={20} color={theme.error} />}
               label="Çıkış Yap"

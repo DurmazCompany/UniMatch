@@ -9,16 +9,18 @@ datasource db {
 
 // Better Auth required models
 model User {
-  id            String    @id
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  profile       Profile?
+  id             String    @id
+  name           String
+  email          String    @unique
+  emailVerified  Boolean   @default(false)
+  image          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  sessions       Session[]
+  accounts       Account[]
+  profile        Profile?
+  blocksGiven    Block[]   @relation("BlockerBlocks")
+  blocksReceived Block[]   @relation("BlockedBlocks")
 }
 
 model Session {
@@ -147,16 +149,18 @@ model Match {
 }
 
 model Message {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   matchId       String
   senderId      String
   content       String
-  messageType   String   @default("text") // "text" or "voice"
-  voiceUrl      String?  // URL to voice message file
-  voiceDuration Int?     // Duration in seconds
-  createdAt     DateTime @default(now())
-  match         Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  sender        Profile  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  messageType   String    @default("text") // "text", "voice", "photo", "ephemeral_photo"
+  voiceUrl      String?   // URL to voice message file
+  voiceDuration Int?      // Duration in seconds
+  expiresAt     DateTime? // For ephemeral messages
+  isDeleted     Boolean   @default(false) // Soft delete
+  createdAt     DateTime  @default(now())
+  match         Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  sender        Profile   @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([matchId])
   @@index([senderId])
@@ -203,4 +207,15 @@ model Referral {
   invited     Profile  @relation("ReferralInvited", fields: [invitedId], references: [id], onDelete: Cascade)
 
   @@unique([invitedId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker   User     @relation("BlockerBlocks", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("BlockedBlocks", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
 }

@@ -1,5 +1,6 @@
 import { Pressable, Text, ActivityIndicator, ViewStyle, TextStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { theme } from "@/lib/theme";
 
 interface ButtonProps {
   onPress: () => void;

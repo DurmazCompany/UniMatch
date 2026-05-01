@@ -27,6 +27,7 @@ import {
 } from "@/lib/notifications";
 import type { Subscription } from "expo-notifications";
 import { theme } from "@/lib/theme";
+import { usePrivacyStore } from "@/lib/state/privacyStore";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -67,10 +68,11 @@ function RootLayoutNav() {
   const router = useRouter();
   const notificationResponseListener = useRef<Subscription | null>(null);
 
-  // Initialize RevenueCat when user is authenticated
+  // Initialize RevenueCat and sync blocks when user is authenticated
   useEffect(() => {
     if (session?.user?.id) {
       initRevenueCat(session.user.id);
+      usePrivacyStore.getState().syncBlocks();
     }
   }, [session?.user?.id]);
 
