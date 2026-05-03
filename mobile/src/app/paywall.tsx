@@ -31,7 +31,6 @@ import {
   Crown,
   Heart,
   Eye,
-  Zap,
   Star,
   RotateCcw,
   Sparkles,
@@ -62,55 +61,52 @@ interface PackageTier {
   _rcPackage?: PurchasesPackage;
 }
 
-// Static tier definitions — prices are overridden by RevenueCat at runtime
+// Static tier definitions — static prices always shown, RC only used for purchasing
 const TIER_DEFINITIONS: PackageTier[] = [
   {
     id: "crush",
     storeIdentifier: null,
     name: "Crush",
-    price: "Ucretsiz",
+    price: "Ücretsiz",
     period: "",
     isFree: true,
     accentColor: "#6B7280",
     features: [
-      { icon: Heart, text: "Günlük 5 beğeni", included: true },
-      { icon: Star, text: "Gunluk 1 super begeni", included: true },
-      { icon: Zap, text: "Kesif boost", included: false },
-      { icon: Eye, text: "Seni begenenleri gor", included: false },
-      { icon: RotateCcw, text: "Geri alma", included: false },
+      { icon: Heart, text: "Günlük 5 beğeni hakkı", included: true },
+      { icon: RotateCcw, text: "Geri alma yok", included: false },
+      { icon: Eye, text: "Seni beğenenleri gör", included: false },
+      { icon: Star, text: "Süper beğeni (günlük 1)", included: true },
     ],
   },
   {
     id: "flort",
-    storeIdentifier: "crush_monthly",
-    name: "Flort",
-    price: "₺79,99",
+    storeIdentifier: "unimatch_flort_monthly",
+    name: "Flört",
+    price: "₺89,99",
     period: "/ay",
     isRecommended: true,
-    accentColor: theme.primary,
+    accentColor: "#D4537E",
     features: [
-      { icon: Heart, text: "Gunluk 20 begeni hakki", included: true },
-      { icon: Star, text: "Gunluk 3 super begeni", included: true },
-      { icon: Zap, text: "Haftada 3 gun kesif boost", included: true },
-      { icon: Eye, text: "Seni begenenleri gor", included: false },
-      { icon: RotateCcw, text: "Geri alma", included: false },
+      { icon: Heart, text: "Günlük 30 beğeni hakkı", included: true },
+      { icon: RotateCcw, text: "Son beğeniyi geri al", included: true },
+      { icon: Eye, text: "Seni beğenenleri gör", included: true },
+      { icon: Star, text: "Günlük 3 süper beğeni", included: true },
     ],
   },
   {
     id: "ask",
-    storeIdentifier: "lover_yearly",
-    name: "Ask",
-    price: "₺58,25",
+    storeIdentifier: "unimatch_ask_yearly",
+    name: "Aşk",
+    price: "₺41,67",
     period: "/ay",
-    perMonthHint: "Yıllık ödenir · ₺699/yıl",
-    savings: "%27 tasarruf",
+    perMonthHint: "Yıllık ödenir · ₺499,99/yıl",
+    savings: "%54 tasarruf",
     accentColor: "#FFD700",
     features: [
-      { icon: Heart, text: "Sinirsiz begeni", included: true },
-      { icon: Star, text: "Gunluk 5 super begeni", included: true },
-      { icon: Zap, text: "1 haftalik kesif boost", included: true },
-      { icon: Eye, text: "Seni begenenleri gor", included: true },
-      { icon: RotateCcw, text: "5 geri alma hakki", included: true },
+      { icon: Heart, text: "Sınırsız beğeni", included: true },
+      { icon: RotateCcw, text: "Son beğeniyi geri al", included: true },
+      { icon: Eye, text: "Seni beğenenleri gör", included: true },
+      { icon: Star, text: "Günlük 5 süper beğeni", included: true },
     ],
   },
 ];
@@ -123,16 +119,10 @@ interface AddonPackage {
   badge?: string;
 }
 
-const BOOST_PACKAGES: AddonPackage[] = [
-  { id: "boost_1", label: "1 Boost", price: "₺19,99", storeId: "boost_pack_1" },
-  { id: "boost_5", label: "5 Boost", price: "₺79,99", storeId: "boost_pack_5", badge: "İyi değer" },
-  { id: "boost_10", label: "10 Boost", price: "₺139,99", storeId: "boost_pack_10", badge: "En iyi" },
-];
-
 const SUPER_LIKE_PACKAGES: AddonPackage[] = [
-  { id: "sl_5", label: "5 Süper Beğeni", price: "₺14,99", storeId: "super_like_pack_5" },
-  { id: "sl_15", label: "15 Süper Beğeni", price: "₺34,99", storeId: "super_like_pack_15", badge: "Popüler" },
-  { id: "sl_30", label: "30 Süper Beğeni", price: "₺59,99", storeId: "super_like_pack_30" },
+  { id: "sl_5", label: "5 Süper Beğeni", price: "₺24,99", storeId: "unimatch_superlikes_5" },
+  { id: "sl_15", label: "15 Süper Beğeni", price: "₺59,99", storeId: "unimatch_superlikes_15", badge: "Popüler" },
+  { id: "sl_30", label: "30 Süper Beğeni", price: "₺99,99", storeId: "unimatch_superlikes_30" },
 ];
 
 // Feature row component for package cards
@@ -506,7 +496,7 @@ export default function PaywallScreen() {
     queryFn: getOfferings,
   });
 
-  // Build display tiers by merging static definitions with live RC prices
+  // Build display tiers — static prices always shown, RC package only attached for purchasing
   const packages: PackageTier[] = useMemo(
     () =>
       TIER_DEFINITIONS.map((tier) => {
@@ -514,10 +504,8 @@ export default function PaywallScreen() {
         const rcPkg = rcPackages?.find(
           (p: PurchasesPackage) => p.product.identifier === tier.storeIdentifier
         );
-        if (rcPkg) {
-          return { ...tier, price: rcPkg.product.priceString, _rcPackage: rcPkg };
-        }
-        return tier;
+        // Only attach RC package for purchasing — don't override static prices
+        return rcPkg ? { ...tier, _rcPackage: rcPkg } : tier;
       }),
     [rcPackages]
   );
@@ -706,38 +694,22 @@ export default function PaywallScreen() {
           </Text>
         </View>
 
-        {/* Loading state for offerings */}
-        {loadingOfferings ? (
-          <View style={{ alignItems: "center", paddingVertical: 32 }} testID="offerings-loading">
-            <ActivityIndicator color={theme.primary} size="large" />
-            <Text
-              style={{
-                color: theme.textSecondary,
-                fontSize: 14,
-                marginTop: 12,
-                fontFamily: "PlusJakartaSans_400Regular",
-              }}
-            >
-              Fiyatlar yukleniyor...
-            </Text>
-          </View>
-        ) : (
-          packages.map((pkg) => (
-            <PackageCard
-              key={pkg.id}
-              pkg={pkg}
-              onSelect={handleSelectPackage}
-              selectedId={selectedId}
-            />
-          ))
-        )}
+        {/* Package cards — always shown with static prices */}
+        {packages.map((pkg) => (
+          <PackageCard
+            key={pkg.id}
+            pkg={pkg}
+            onSelect={handleSelectPackage}
+            selectedId={selectedId}
+          />
+        ))}
 
         <Pressable
           onPress={handleContinue}
-          disabled={isPurchasing || loadingOfferings}
+          disabled={isPurchasing}
           testID="paywall-continue-button"
           style={({ pressed }) => ({
-            opacity: pressed || isPurchasing || loadingOfferings ? 0.8 : 1,
+            opacity: pressed || isPurchasing ? 0.8 : 1,
             marginTop: 8,
             marginBottom: 12,
           })}
@@ -823,52 +795,6 @@ export default function PaywallScreen() {
             >
               Tek seferlik ekstralar
             </Text>
-          </View>
-
-          {/* Boost subsection */}
-          <View
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 16,
-              padding: 16,
-              marginBottom: 12,
-              shadowColor: "#000",
-              shadowOpacity: 0.05,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 1 },
-              elevation: 1,
-              borderWidth: 1,
-              borderColor: "#F0EAF0",
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
-              <Zap size={15} color={theme.primary} />
-              <Text
-                style={{
-                  color: theme.textPrimary,
-                  fontSize: 14,
-                  fontFamily: "PlusJakartaSans_600SemiBold",
-                }}
-              >
-                Boost
-              </Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={{ flexGrow: 0 }}
-              contentContainerStyle={{ gap: 10, paddingTop: 12, paddingBottom: 4 }}
-            >
-              {BOOST_PACKAGES.map((addon) => (
-                <AddonCard
-                  key={addon.id}
-                  addon={addon}
-                  icon={<Zap size={20} color={theme.primary} />}
-                  onPress={() => handlePurchaseAddon(addon)}
-                  loading={purchasingAddonId === addon.id}
-                />
-              ))}
-            </ScrollView>
           </View>
 
           {/* Super Like subsection */}

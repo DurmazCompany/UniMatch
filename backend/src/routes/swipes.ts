@@ -57,16 +57,36 @@ swipesRouter.post("/", async (c) => {
   const today = new Date().toDateString();
   const lastSwipeDay = myProfile.lastSwipeDate ? new Date(myProfile.lastSwipeDate).toDateString() : null;
 
+  const isPremiumActive =
+    myProfile.isPremium &&
+    myProfile.premiumUntil &&
+    myProfile.premiumUntil > new Date();
+
+  const dailySwipeLimit = isPremiumActive ? 999 : 5;
+  // Super like daily allowance: premium=5, free=1
+  const dailySuperLikeLimit = isPremiumActive ? 5 : 1;
+
   if (lastSwipeDay !== today) {
+    // Reset swipes and super likes daily
     await prisma.profile.update({
       where: { id: myProfile.id },
-      data: { swipesToday: 0, lastSwipeDate: new Date() },
+      data: {
+        swipesToday: 0,
+        lastSwipeDate: new Date(),
+        superLikesLeft: dailySuperLikeLimit,
+      },
     });
     myProfile.swipesToday = 0;
+    myProfile.superLikesLeft = dailySuperLikeLimit;
   }
 
-  if (myProfile.swipesToday >= 5) {
+  if (myProfile.swipesToday >= dailySwipeLimit) {
     return c.json({ error: { message: "Günlük beğeni limitine ulaştın. Daha fazlası için Premium'a geç!", code: "LIMIT_REACHED" } }, 429);
+  }
+
+  // Check super like limit
+  if (direction === "super" && myProfile.superLikesLeft <= 0) {
+    return c.json({ error: { message: "Günlük süper beğeni limitine ulaştın.", code: "SUPER_LIKE_LIMIT_REACHED" } }, 429);
   }
 
   // Record swipe
@@ -112,6 +132,10 @@ swipesRouter.post("/", async (c) => {
     lastSwipeDate: new Date(),
     streakCount: newStreak,
     lastStreakDate: newLastStreakDate,
+    // Decrement super likes when direction is "super"
+    ...(direction === "super"
+      ? { superLikesLeft: Math.max(0, myProfile.superLikesLeft - 1) }
+      : {}),
   };
 
   if (streakJustReached) {
@@ -273,7 +297,7 @@ swipesRouter.post("/", async (c) => {
   return c.json({
     data: {
       match,
-      swipesLeft: 5 - (updateData.swipesToday ?? newSwipesToday),
+      swipesLeft: dailySwipeLimit - (updateData.swipesToday ?? newSwipesToday),
       streakCount: newStreak,
       streakJustReached,
     },
