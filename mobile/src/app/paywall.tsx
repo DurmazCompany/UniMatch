@@ -487,8 +487,9 @@ function PackageCard({
                 ) : null}
               </View>
             ) : null}
-          </Animated.View>
-        </Pressable>
+          </View>
+        </Animated.View>
+      </Pressable>
     </View>
   );
 }
