@@ -245,6 +245,141 @@ seedRouter.post("/profiles", async (c) => {
   });
 });
 
+// POST /api/seed/events - create sample events for Yeditepe Üniversitesi
+seedRouter.post("/events", async (c) => {
+  // Find any existing profile to use as createdById, or create one
+  let creatorProfile = await prisma.profile.findFirst();
+
+  if (!creatorProfile) {
+    const userId = randomUUID();
+    await prisma.user.create({
+      data: {
+        id: userId,
+        name: "Seed Admin",
+        email: `seedadmin_${Date.now()}@test.com`,
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    creatorProfile = await prisma.profile.create({
+      data: {
+        id: randomUUID(),
+        userId,
+        university: "Yeditepe Üniversitesi",
+        name: "Seed Admin",
+        birthDate: new Date("2000-01-01"),
+        gender: "Erkek",
+        department: "Bilgisayar Mühendisliği",
+        year: 3,
+        bio: "Seed hesabı",
+        photos: JSON.stringify([]),
+        hobbies: JSON.stringify([]),
+      },
+    });
+  }
+
+  const eventsData = [
+    {
+      title: "Bahar Şenliği 2025",
+      description: "Yeditepe Üniversitesi'nin geleneksel bahar şenliği! Müzik, eğlence ve sürpriz aktiviteler sizi bekliyor. Tüm öğrenciler davetli.",
+      date: new Date("2025-05-15T14:00:00"),
+      location: "Yeditepe Üniversitesi Ana Kampüs",
+      isPaid: false,
+      ticketPrice: null,
+      maxAttendees: 500,
+    },
+    {
+      title: "Kariyer Günleri 2025",
+      description: "Türkiye'nin önde gelen şirketlerinden İK yöneticileri ve staj koordinatörleri ile buluşma fırsatı. CV inceleme ve röportaj simülasyonu da yapılacak.",
+      date: new Date("2025-05-20T10:00:00"),
+      location: "Yeditepe Üniversitesi Kongre Merkezi",
+      isPaid: false,
+      ticketPrice: null,
+      maxAttendees: 300,
+    },
+    {
+      title: "UniMatch Buluşması ☕",
+      description: "UniMatch kullanıcıları olarak ilk kez yüz yüze tanışalım! Kahve eşliğinde sohbet, yeni arkadaşlıklar ve eğlenceli aktiviteler.",
+      date: new Date("2025-05-10T16:00:00"),
+      location: "Yeditepe Üniversitesi Kafeterya",
+      isPaid: false,
+      ticketPrice: null,
+      maxAttendees: 100,
+    },
+    {
+      title: "Teknoloji Zirvesi 2025",
+      description: "Yapay zeka, blockchain ve startup ekosistemi üzerine panel tartışmaları. Girişimciler ve yatırımcılarla networking fırsatı. Öğle yemeği dahil.",
+      date: new Date("2025-05-25T09:00:00"),
+      location: "Yeditepe Üniversitesi Mühendislik Fakültesi",
+      isPaid: true,
+      ticketPrice: 50,
+      maxAttendees: 150,
+    },
+    {
+      title: "Mezuniyet Gecesi 2025",
+      description: "Bu yılın mezunlarını uğurlayan resmi gala yemeği. Kokteyl, yemek, müzik ve ödül töreni. Sınıf fotoğrafı çekimi dahil.",
+      date: new Date("2025-06-01T19:00:00"),
+      location: "Four Seasons Bosphorus İstanbul",
+      isPaid: true,
+      ticketPrice: 150,
+      maxAttendees: 200,
+    },
+    {
+      title: "Spor Turnuvası 2025",
+      description: "Basketbol ve futbol branşlarında fakültelerarası turnuva. Bireysel veya takım olarak katılabilirsiniz. Ödüller kazanma şansı!",
+      date: new Date("2025-05-18T10:00:00"),
+      location: "Yeditepe Üniversitesi Spor Tesisleri",
+      isPaid: false,
+      ticketPrice: null,
+      maxAttendees: 200,
+    },
+    {
+      title: "Müzik Festivali 🎵",
+      description: "Açık havada unutulmaz bir müzik deneyimi! Yerli bağımsız sanatçılar ve öğrenci gruplarının performansları. Yiyecek ve içecek stantları mevcut.",
+      date: new Date("2025-05-28T17:00:00"),
+      location: "Yeditepe Üniversitesi Açık Amfi Tiyatro",
+      isPaid: false,
+      ticketPrice: null,
+      maxAttendees: 1000,
+    },
+    {
+      title: "Hackathon 2025",
+      description: "24 saatlik yazılım geliştirme maratonu! Yapay zeka, sürdürülebilirlik veya sağlık alanlarında proje geliştirin. 3 kişilik takımlarla katılın. Ödül havuzu: 30.000₺.",
+      date: new Date("2025-05-31T10:00:00"),
+      location: "Yeditepe Üniversitesi Bilgisayar Mühendisliği Binası",
+      isPaid: false,
+      ticketPrice: null,
+      maxAttendees: 120,
+    },
+  ];
+
+  const createdEvents = [];
+  for (const eventData of eventsData) {
+    try {
+      const event = await prisma.event.create({
+        data: {
+          ...eventData,
+          university: "Yeditepe Üniversitesi",
+          createdById: creatorProfile.id,
+          isActive: true,
+          ticketsSold: Math.floor(Math.random() * (eventData.maxAttendees ? eventData.maxAttendees * 0.4 : 20)),
+        },
+      });
+      createdEvents.push({ id: event.id, title: event.title, date: event.date });
+    } catch (error) {
+      console.error(`Failed to create event "${eventData.title}":`, error);
+    }
+  }
+
+  return c.json({
+    data: {
+      message: `Created ${createdEvents.length} events for Yeditepe Üniversitesi`,
+      events: createdEvents,
+    },
+  });
+});
+
 // DELETE /api/seed/profiles - delete all seed profiles (test users)
 seedRouter.delete("/profiles", async (c) => {
   const testUsers = await prisma.user.findMany({
