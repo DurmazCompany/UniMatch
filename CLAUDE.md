@@ -61,6 +61,14 @@ This workspace contains a mobile app and backend server.
   Frontend only skills:
   - frontend-app-design: Create distinctive, production-grade React Native Expo interfaces following iOS Human Interface Guidelines and liquid glass design principles. Use when building mobile screens, components, or styling any React Native UI.
   - expo-docs: Use this skill when the user asks you to use an Expo SDK module or package that you might not know much about.
+
+  Global skills in ~/.claude/skills/:
+  - fix: Use when there are lint errors, formatting issues, or before committing to ensure CI passes.
+  - ios-dev: Use when implementing iOS-specific features — Swift, SwiftUI, Live Activities, WidgetKit, XCTest.
+  - react-native-components: Use when building React Native UI components (View, Text, Image, ScrollView, FlatList, etc.).
+  - react-native-design: Use when styling, implementing navigation patterns, or creating Reanimated animations in React Native.
+  - revenuecat: Use when integrating RevenueCat for in-app purchases, subscriptions, paywalls, or entitlements.
+  - stack-mobile: Use for React Native mobile stack conventions and architecture decisions.
 </skills>
 
 <environment>
