@@ -2,8 +2,8 @@ import Purchases, { PurchasesPackage, CustomerInfo } from "react-native-purchase
 import { Platform } from "react-native";
 
 const API_KEY = Platform.select({
-  ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || "",
-  android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || "",
+  ios: process.env.EXPO_PUBLIC_VIBECODE_REVENUECAT_APPLE_KEY || process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || "",
+  android: process.env.EXPO_PUBLIC_VIBECODE_REVENUECAT_GOOGLE_KEY || process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || "",
 }) || "";
 
 export async function initRevenueCat(userId?: string) {

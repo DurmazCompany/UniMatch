@@ -16,23 +16,35 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme, gradients } from "@/lib/theme";
-import { ChevronLeft, Check } from "lucide-react-native";
+import { ChevronLeft, Check, Music, Dribbble, Gamepad2, Film, BookOpen, Plane, Camera, UtensilsCrossed, Palette, Dumbbell, Code, PersonStanding, Coffee, TreePine, Music2, Heart, Globe, ShoppingBag, Star, Mic, Tv, Hash, Mic2 } from "lucide-react-native";
 import { api } from "@/lib/api/api";
 import { Profile } from "@/lib/types";
 
 const HOBBIES = [
-  { value: "music", label: "Muzik", emoji: "M" },
-  { value: "sports", label: "Spor", emoji: "S" },
-  { value: "gaming", label: "Oyun", emoji: "G" },
-  { value: "movies", label: "Film/Dizi", emoji: "F" },
-  { value: "reading", label: "Kitap", emoji: "K" },
-  { value: "travel", label: "Seyahat", emoji: "T" },
-  { value: "photography", label: "Fotograf", emoji: "P" },
-  { value: "cooking", label: "Yemek", emoji: "Y" },
-  { value: "art", label: "Sanat", emoji: "A" },
-  { value: "fitness", label: "Fitness", emoji: "F" },
-  { value: "coding", label: "Kodlama", emoji: "C" },
-  { value: "dance", label: "Dans", emoji: "D" },
+  { value: "music", label: "Muzik", icon: Music },
+  { value: "sports", label: "Spor", icon: Dribbble },
+  { value: "gaming", label: "Oyun", icon: Gamepad2 },
+  { value: "movies", label: "Film/Dizi", icon: Film },
+  { value: "reading", label: "Kitap", icon: BookOpen },
+  { value: "travel", label: "Seyahat", icon: Plane },
+  { value: "photography", label: "Fotograf", icon: Camera },
+  { value: "cooking", label: "Yemek", icon: UtensilsCrossed },
+  { value: "art", label: "Sanat", icon: Palette },
+  { value: "fitness", label: "Fitness", icon: Dumbbell },
+  { value: "coding", label: "Kodlama", icon: Code },
+  { value: "dance", label: "Dans", icon: PersonStanding },
+  { value: "cafe", label: "Kafe Takilma", icon: Coffee },
+  { value: "yoga", label: "Yoga", icon: PersonStanding },
+  { value: "hiking", label: "Doga Yuruyusu", icon: TreePine },
+  { value: "concerts", label: "Konser", icon: Music2 },
+  { value: "volunteering", label: "Gonulluluk", icon: Heart },
+  { value: "languages", label: "Yabanci Dil", icon: Globe },
+  { value: "fashion", label: "Moda", icon: ShoppingBag },
+  { value: "astrology", label: "Astroloji", icon: Star },
+  { value: "podcast", label: "Podcast", icon: Mic },
+  { value: "anime", label: "Anime/Manga", icon: Tv },
+  { value: "board_games", label: "Kutu Oyunlari", icon: Hash },
+  { value: "theater", label: "Tiyatro/Sanat", icon: Mic2 },
 ];
 
 const BIO_MAX_LENGTH = 200;
@@ -73,9 +85,37 @@ export default function EditProfileScreen() {
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
+      // Upload any local (file://) photos first, then save with remote URLs
+      const uploadedPhotos: string[] = [];
+      for (const photo of photos) {
+        if (photo.startsWith("file://") || photo.startsWith("ph://") || !photo.startsWith("http")) {
+          try {
+            const formData = new FormData();
+            formData.append("file", {
+              uri: photo,
+              type: "image/jpeg",
+              name: "photo.jpg",
+            } as any);
+            const res = await fetch(
+              `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/uploads/photo`,
+              { method: "POST", body: formData, credentials: "include" }
+            );
+            const data = await res.json();
+            if (data?.data?.url) {
+              uploadedPhotos.push(data.data.url);
+            } else {
+              uploadedPhotos.push(photo); // fallback
+            }
+          } catch {
+            uploadedPhotos.push(photo); // fallback
+          }
+        } else {
+          uploadedPhotos.push(photo);
+        }
+      }
       const payload = {
         bio,
-        photos: JSON.stringify(photos),
+        photos: JSON.stringify(uploadedPhotos),
         hobbies: JSON.stringify(selectedHobbies),
       };
       return api.post("/api/profile", payload);
@@ -468,6 +508,7 @@ export default function EditProfileScreen() {
                       opacity: isDisabled ? 0.4 : 1,
                     }}
                   >
+                    <hobby.icon size={14} color={isSelected ? theme.accent : theme.textSecondary} />
                     <Text
                       style={{
                         color: isSelected ? theme.accent : theme.textSecondary,

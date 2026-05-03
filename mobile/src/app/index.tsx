@@ -230,17 +230,20 @@ export default function WelcomeScreen() {
         <Pressable
           onPress={handleSignIn}
           testID="signin-button"
-          style={({ pressed }) => ({
-            opacity: pressed ? 0.7 : 1,
-            paddingVertical: 18,
-            borderRadius: 14,
-            alignItems: "center",
-            borderWidth: 1.5,
-            borderColor: theme.borderDefault,
-            backgroundColor: theme.surface,
-          })}
+          style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
         >
-          <Text style={{ color: theme.textPrimary, fontSize: 17, fontWeight: "600" }}>Giriş Yap</Text>
+          <View
+            style={{
+              paddingVertical: 18,
+              borderRadius: 14,
+              alignItems: "center",
+              borderWidth: 2,
+              borderColor: theme.primary,
+              backgroundColor: "rgba(255,255,255,0.9)",
+            }}
+          >
+            <Text style={{ color: theme.primary, fontSize: 17, fontWeight: "600" }}>Giriş Yap</Text>
+          </View>
         </Pressable>
       </View>
 

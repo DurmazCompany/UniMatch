@@ -107,7 +107,7 @@ function FilterModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
         {/* Header */}
         <View
           style={{
@@ -117,8 +117,8 @@ function FilterModal({
             paddingHorizontal: 20,
             paddingTop: insets.top + 16,
             paddingBottom: 16,
-            borderBottomWidth: 0.5,
-            borderBottomColor: theme.borderDefault,
+            borderBottomWidth: 1,
+            borderBottomColor: "#F0EAF0",
           }}
         >
           <Pressable
@@ -248,8 +248,8 @@ function FilterModal({
             paddingHorizontal: 20,
             paddingBottom: insets.bottom + 20,
             paddingTop: 12,
-            borderTopWidth: 0.5,
-            borderTopColor: theme.borderDefault,
+            borderTopWidth: 1,
+            borderTopColor: "#F0EAF0",
           }}
         >
           <Pressable
@@ -301,25 +301,43 @@ export default function DiscoverScreen() {
     };
   }, []);
 
+  const redirectedToOnboarding = useRef(false);
+
   const { data: myProfile, isLoading: profileLoading } = useQuery<Profile | null>({
     queryKey: ["my-profile"],
     queryFn: async () => {
-      try {
-        const result = await api.get<Profile>("/api/profile");
-        return result ?? null;
-      } catch {
-        return null;
+      // Retry once with a small delay to handle cookie propagation race
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 800));
+        try {
+          const result = await api.get<Profile>("/api/profile");
+          return result ?? null;
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "";
+          // On auth error (401), retry — don't treat as "no profile"
+          if (msg.includes("401") || msg.includes("Unauthorized")) continue;
+          return null;
+        }
       }
+      return null;
     },
+    retry: false,
+    staleTime: 30_000,
   });
 
   const profileSettled = !profileLoading;
   useEffect(() => {
     if (!isMounted.current) return;
     if (profileSettled && myProfile === null) {
-      setProfileLoaded(true);
-      router.replace("/onboarding/welcome");
+      // Only redirect to onboarding once per mount — prevents redirect loop
+      // after returning from onboarding before the query has re-fetched
+      if (!redirectedToOnboarding.current) {
+        redirectedToOnboarding.current = true;
+        setProfileLoaded(true);
+        router.replace("/onboarding/welcome");
+      }
     } else if (profileSettled && myProfile) {
+      redirectedToOnboarding.current = false;
       setProfileLoaded(true);
     }
   }, [profileSettled, myProfile]);
@@ -434,7 +452,7 @@ export default function DiscoverScreen() {
       <View
         style={{
           flex: 1,
-          backgroundColor: theme.background,
+          backgroundColor: "#F8F4F6",
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -449,7 +467,7 @@ export default function DiscoverScreen() {
 
   return (
     <View
-      style={{ flex: 1, backgroundColor: theme.background }}
+      style={{ flex: 1, backgroundColor: "#F8F4F6" }}
       testID="discover-screen"
     >
       {hasProfiles ? (
@@ -549,9 +567,14 @@ export default function DiscoverScreen() {
               alignItems: "center",
               gap: 14,
               paddingHorizontal: 24,
-              paddingBottom: insets.bottom + 16,
+              paddingBottom: insets.bottom + 90,
               paddingTop: 4,
-              backgroundColor: theme.background,
+              backgroundColor: "#FFFFFF",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              elevation: 4,
             }}
           >
             {/* Rewind */}

@@ -21,7 +21,8 @@ import { theme, gradients } from "@/lib/theme";
 import { ChevronLeft, Eye, EyeOff, Gift } from "lucide-react-native";
 
 const isUniversityEmail = (email: string) => {
-  return email.includes(".edu");
+  // Accepts .edu domains AND common test domains
+  return email.includes(".edu") || email.includes("@yeditepe.") || email.includes("@test.");
 };
 
 const isValidPassword = (password: string) => {

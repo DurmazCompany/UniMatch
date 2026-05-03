@@ -12,7 +12,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { theme, useTheme } from "@/lib/theme";
+import { theme } from "@/lib/theme";
 import {
   getOfferings,
   purchasePackage,
@@ -161,7 +161,7 @@ function FeatureRow({
       <Text
         style={{
           flex: 1,
-          color: feature.included ? theme.textPrimary : theme.textPlaceholder,
+          color: feature.included ? "#1A0D14" : "#C4A8B4",
           fontSize: 14,
           fontFamily: "PlusJakartaSans_400Regular",
         }}
@@ -197,13 +197,18 @@ function AddonCard({
     >
       <View
         style={{
-          backgroundColor: theme.surface,
+          backgroundColor: "#FFFFFF",
           borderRadius: 16,
           padding: 12,
           borderWidth: 1,
-          borderColor: theme.borderDefault,
+          borderColor: "#F0EAF0",
           alignItems: "center",
           minWidth: 100,
+          shadowColor: "#000",
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 1 },
+          elevation: 2,
         }}
       >
         {addon.badge ? (
@@ -237,7 +242,7 @@ function AddonCard({
 
         <Text
           style={{
-            color: theme.textPrimary,
+            color: "#1A0D14",
             fontSize: 13,
             fontFamily: "PlusJakartaSans_600SemiBold",
             marginTop: 8,
@@ -248,7 +253,7 @@ function AddonCard({
         </Text>
         <Text
           style={{
-            color: theme.textSecondary,
+            color: "#8A6F78",
             fontSize: 12,
             fontFamily: "PlusJakartaSans_400Regular",
             marginTop: 4,
@@ -300,11 +305,16 @@ function PackageCard({
       >
         <View
           style={{
-            backgroundColor: theme.surface,
+            backgroundColor: isRecommended ? "#FFF0F3" : "#FFFFFF",
             borderRadius: 20,
             overflow: "hidden",
             borderWidth: isRecommended ? 2 : 1,
-            borderColor: isRecommended ? pkg.accentColor : theme.borderDefault,
+            borderColor: isRecommended ? "#E8436A" : "#F0EAF0",
+            shadowColor: "#000",
+            shadowOpacity: 0.06,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 2,
           }}
         >
           {/* Recommended badge */}
@@ -350,7 +360,7 @@ function PackageCard({
                 {getPackageIcon(pkg)}
                 <Text
                   style={{
-                    color: theme.textPrimary,
+                    color: "#1A0D14",
                     fontSize: 22,
                     fontFamily: "Syne_700Bold",
                     marginLeft: 10,
@@ -363,7 +373,7 @@ function PackageCard({
                 {pkg.isFree ? (
                   <Text
                     style={{
-                      color: theme.textSecondary,
+                      color: "#8A6F78",
                       fontSize: 16,
                       fontFamily: "PlusJakartaSans_600SemiBold",
                     }}
@@ -400,7 +410,7 @@ function PackageCard({
             <View
               style={{
                 height: 1,
-                backgroundColor: theme.borderDefault,
+                backgroundColor: "#F0EAF0",
                 marginBottom: 12,
               }}
             />
@@ -421,7 +431,7 @@ function PackageCard({
                 {pkg.perMonthHint ? (
                   <Text
                     style={{
-                      color: theme.textSecondary,
+                      color: "#8A6F78",
                       fontSize: 12,
                       fontFamily: "PlusJakartaSans_400Regular",
                     }}
@@ -451,7 +461,6 @@ function PackageCard({
 }
 
 export default function PaywallScreen() {
-  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [selectedId, setSelectedId] = useState<TierId>("crush");
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
@@ -573,13 +582,7 @@ export default function PaywallScreen() {
   const isPurchasing = purchaseMutation.isPending;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
-      {/* Background gradient */}
-      <LinearGradient
-        colors={["#1A0D12", "#0D0D0D"]}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-      />
-
+    <View style={{ flex: 1, backgroundColor: "#F8F4F6" }}>
       {/* Close button */}
       <Pressable
         onPress={() => router.back()}
@@ -592,17 +595,22 @@ export default function PaywallScreen() {
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: "rgba(255,255,255,0.1)",
+          backgroundColor: "#FFFFFF",
           alignItems: "center",
           justifyContent: "center",
+          shadowColor: "#000",
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 1 },
+          elevation: 2,
         }}
       >
-        <X size={20} color="#fff" />
+        <X size={20} color="#1A0D14" />
       </Pressable>
 
       <Text
         style={{
-          color: theme.textPlaceholder,
+          color: "#8A6F78",
           fontSize: 12,
           textAlign: "center",
           marginTop: insets.top + 18,
@@ -628,13 +636,13 @@ export default function PaywallScreen() {
               width: 72,
               height: 72,
               borderRadius: 36,
-              backgroundColor: "rgba(232, 68, 90, 0.15)",
+              backgroundColor: "#FFF0F3",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 16,
-              shadowColor: theme.primary,
+              shadowColor: "#E8436A",
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.4,
+              shadowOpacity: 0.2,
               shadowRadius: 16,
             }}
           >
@@ -732,7 +740,7 @@ export default function PaywallScreen() {
         {purchaseError !== null ? (
           <View
             style={{
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
+              backgroundColor: "#FFF0F0",
               borderRadius: 12,
               padding: 12,
               marginBottom: 16,
@@ -759,7 +767,7 @@ export default function PaywallScreen() {
             marginBottom: 8,
             paddingTop: 20,
             borderTopWidth: 1,
-            borderTopColor: "rgba(255,255,255,0.08)",
+            borderTopColor: "#F0EAF0",
           }}
         >
           <View
@@ -874,7 +882,7 @@ export default function PaywallScreen() {
             marginTop: 12,
             paddingTop: 16,
             borderTopWidth: 1,
-            borderTopColor: "rgba(255,255,255,0.08)",
+            borderTopColor: "#F0EAF0",
           }}
         >
           <Text

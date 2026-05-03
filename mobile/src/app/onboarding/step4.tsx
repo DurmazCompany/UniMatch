@@ -14,7 +14,7 @@ import { api } from "@/lib/api/api";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme, gradients } from "@/lib/theme";
-import { ChevronLeft, Music, Dribbble, Gamepad2, Film, BookOpen, Plane, Camera, UtensilsCrossed, Palette, Dumbbell, Code, PersonStanding } from "lucide-react-native";
+import { ChevronLeft, Music, Dribbble, Gamepad2, Film, BookOpen, Plane, Camera, UtensilsCrossed, Palette, Dumbbell, Code, PersonStanding, Coffee, TreePine, Music2, Heart, Globe, ShoppingBag, Star, Mic, Tv, Hash, Mic2 } from "lucide-react-native";
 
 const HOBBIES = [
   { value: "music", label: "Muzik", icon: Music },
@@ -29,6 +29,18 @@ const HOBBIES = [
   { value: "fitness", label: "Fitness", icon: Dumbbell },
   { value: "coding", label: "Kodlama", icon: Code },
   { value: "dance", label: "Dans", icon: PersonStanding },
+  { value: "cafe", label: "Kafe Takilma", icon: Coffee },
+  { value: "yoga", label: "Yoga", icon: PersonStanding },
+  { value: "hiking", label: "Doga Yuruyusu", icon: TreePine },
+  { value: "concerts", label: "Konser", icon: Music2 },
+  { value: "volunteering", label: "Gonulluluk", icon: Heart },
+  { value: "languages", label: "Yabanci Dil", icon: Globe },
+  { value: "fashion", label: "Moda", icon: ShoppingBag },
+  { value: "astrology", label: "Astroloji", icon: Star },
+  { value: "podcast", label: "Podcast", icon: Mic },
+  { value: "anime", label: "Anime/Manga", icon: Tv },
+  { value: "board_games", label: "Kutu Oyunlari", icon: Hash },
+  { value: "theater", label: "Tiyatro/Sanat", icon: Mic2 },
 ];
 
 export default function Step4Screen() {

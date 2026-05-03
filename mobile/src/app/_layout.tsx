@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { View, Text, Pressable, useColorScheme } from "react-native";
+import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -129,52 +129,56 @@ function RootLayoutNav() {
     }
   }, [session, isLoading, router]);
 
-  if (isLoading) return null;
-
-  const colorScheme = useColorScheme();
+  const bg = "#F8F4F6";
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: colorScheme === "dark" ? "#0D0D0D" : theme.base.bg }}
-      onLayout={() => SplashScreen.hideAsync()}
-    >
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-        <ErrorBoundary>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: theme.base.bg },
-              animation: "fade",
-            }}
-          >
+    <View style={{ flex: 1, backgroundColor: bg }}>
+      <StatusBar style="dark" />
+      <ErrorBoundary>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: bg },
+            animation: "fade",
+          }}
+        >
+          {session?.user ? (
+            <>
+              <Stack.Screen name="(app)" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen
+                name="paywall"
+                options={{ presentation: "modal", headerShown: false }}
+              />
+              <Stack.Screen
+                name="create-event"
+                options={{ presentation: "modal", headerShown: false, animation: "slide_from_bottom" }}
+              />
+              <Stack.Screen
+                name="ambassador"
+                options={{ presentation: "modal", headerShown: false, animation: "slide_from_bottom" }}
+              />
+            </>
+          ) : (
+            <>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="sign-in" />
+              <Stack.Screen name="sign-up" />
+              <Stack.Screen name="forgot-password" />
+            </>
+          )}
+        </Stack>
+      </ErrorBoundary>
 
-            {session?.user ? (
-              <>
-                <Stack.Screen name="(app)" />
-                <Stack.Screen name="onboarding" />
-                <Stack.Screen
-                  name="paywall"
-                  options={{ presentation: "modal", headerShown: false }}
-                />
-                <Stack.Screen
-                  name="create-event"
-                  options={{ presentation: "modal", headerShown: false, animation: "slide_from_bottom" }}
-                />
-                <Stack.Screen
-                  name="ambassador"
-                  options={{ presentation: "modal", headerShown: false, animation: "slide_from_bottom" }}
-                />
-              </>
-            ) : (
-              <>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="sign-in" />
-                <Stack.Screen name="sign-up" />
-                <Stack.Screen name="forgot-password" />
-              </>
-            )}
-          </Stack>
-        </ErrorBoundary>
+      {/* Loading overlay — shown while session check is in flight */}
+      {isLoading ? (
+        <View style={{
+          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "#F8F4F6", alignItems: "center", justifyContent: "center",
+        }}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -189,8 +193,13 @@ export default function RootLayout() {
     PlusJakartaSans_700Bold,
   });
 
-  // Hide splash once fonts are loaded or on error (don't block forever)
-  if (!fontsLoaded && !fontError) return null;
+  const ready = fontsLoaded || !!fontError;
+
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
+
+  if (!ready) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

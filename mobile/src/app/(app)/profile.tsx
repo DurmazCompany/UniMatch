@@ -53,19 +53,22 @@ function ProfilePowerBar({ power }: { power: number }) {
   return (
     <View
       style={{
-        backgroundColor: theme.cardBackground,
+        backgroundColor: "#FFFFFF",
         borderRadius: 16,
         padding: 18,
         marginBottom: 14,
-        borderWidth: 1,
-        borderColor: theme.borderDefault,
+        shadowColor: "#000",
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 2,
       }}
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
         <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700" }}>Profil Gücü</Text>
         <Text style={{ color, fontSize: 15, fontWeight: "800" }}>{pct}%</Text>
       </View>
-      <View style={{ height: 8, backgroundColor: theme.surface, borderRadius: 4, overflow: "hidden" }}>
+      <View style={{ height: 8, backgroundColor: "#F0EAF0", borderRadius: 4, overflow: "hidden" }}>
         <LinearGradient
           colors={
             pct < 40
@@ -121,12 +124,15 @@ function ZodiacSection({ birthDate }: { birthDate: string }) {
   return (
     <View
       style={{
-        backgroundColor: theme.cardBackground,
+        backgroundColor: "#FFFFFF",
         borderRadius: 16,
         marginBottom: 14,
         overflow: "hidden",
-        borderWidth: 1,
-        borderColor: theme.borderDefault,
+        shadowColor: "#000",
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 2,
       }}
     >
       <LinearGradient
@@ -189,11 +195,11 @@ function ZodiacSection({ birthDate }: { birthDate: string }) {
         {/* Relationship style */}
         <View
           style={{
-            backgroundColor: "rgba(255,255,255,0.04)",
+            backgroundColor: "#F8F4F6",
             borderRadius: 10,
             padding: 12,
             borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.06)",
+            borderColor: "#F0EAF0",
           }}
         >
           <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "600", letterSpacing: 0.5, marginBottom: 4 }}>
@@ -311,7 +317,7 @@ export default function ProfileScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.background, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, backgroundColor: "#F8F4F6", alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={theme.primary} size="large" />
       </View>
     );
@@ -320,7 +326,10 @@ export default function ProfileScreen() {
   if (!profile) return null;
 
   const photos = parsePhotos(profile.photos);
-  const lifestyle = profile.lifestyle ? JSON.parse(profile.lifestyle) : {};
+  const lifestyle = (() => {
+    if (!profile.lifestyle) return {};
+    try { return JSON.parse(profile.lifestyle); } catch { return {}; }
+  })();
   const alreadyOnCampus = profile.isOnCampusToday || campusPressed;
 
   const getAge = () => {
@@ -329,7 +338,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }} testID="profile-screen">
+    <View style={{ flex: 1, backgroundColor: "#F8F4F6" }} testID="profile-screen">
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View
@@ -349,13 +358,18 @@ export default function ProfileScreen() {
               width: 40,
               height: 40,
               borderRadius: 20,
-              backgroundColor: theme.surface,
+              backgroundColor: "#FFFFFF",
               alignItems: "center",
               justifyContent: "center",
               opacity: pressed ? 0.7 : 1,
+              shadowColor: "#000",
+              shadowOpacity: 0.06,
+              shadowRadius: 4,
+              shadowOffset: { width: 0, height: 1 },
+              elevation: 1,
             })}
           >
-            <Settings size={20} color={theme.textSecondary} />
+            <Settings size={20} color="#8A6F78" />
           </Pressable>
         </View>
 
@@ -384,7 +398,11 @@ export default function ProfileScreen() {
               </LinearGradient>
             )}
             <Pressable
-              style={{
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(app)/edit-profile");
+              }}
+              style={({ pressed }) => ({
                 position: "absolute",
                 bottom: 0,
                 right: 0,
@@ -395,8 +413,9 @@ export default function ProfileScreen() {
                 alignItems: "center",
                 justifyContent: "center",
                 borderWidth: 3,
-                borderColor: theme.background,
-              }}
+                borderColor: "#F8F4F6",
+                opacity: pressed ? 0.7 : 1,
+              })}
             >
               <Camera size={16} color="#fff" />
             </Pressable>
@@ -419,7 +438,7 @@ export default function ProfileScreen() {
                 {
                   flexDirection: "row",
                   alignItems: "center",
-                  backgroundColor: "rgba(245,158,11,0.12)",
+                  backgroundColor: "#FFF8E6",
                   borderRadius: 100,
                   paddingHorizontal: 16,
                   paddingVertical: 8,
@@ -428,7 +447,7 @@ export default function ProfileScreen() {
                   shadowColor: "#F59E0B",
                   shadowOffset: { width: 0, height: 0 },
                   borderWidth: 1,
-                  borderColor: "rgba(245,158,11,0.2)",
+                  borderColor: "rgba(245,158,11,0.35)",
                 },
                 streakGlowStyle,
               ]}
@@ -471,12 +490,15 @@ export default function ProfileScreen() {
           {/* Who liked me */}
           <View
             style={{
-              backgroundColor: theme.cardBackground,
+              backgroundColor: "#FFFFFF",
               borderRadius: 16,
               padding: 18,
               marginBottom: 14,
-              borderWidth: 1,
-              borderColor: theme.borderDefault,
+              shadowColor: "#000",
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 2,
             }}
           >
             <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700", marginBottom: 12 }}>
@@ -490,10 +512,10 @@ export default function ProfileScreen() {
                     width: 48,
                     height: 48,
                     borderRadius: 24,
-                    backgroundColor: `hsl(${(i * 120 + 340) % 360}, 70%, 65%)`,
+                    backgroundColor: i === 0 ? "#F9D0DA" : i === 1 ? "#F2A8B8" : "#E8436A",
                     marginLeft: i > 0 ? -12 : 0,
                     borderWidth: 3,
-                    borderColor: theme.cardBackground,
+                    borderColor: "#FFFFFF",
                   }}
                 />
               ))}
@@ -541,12 +563,15 @@ export default function ProfileScreen() {
           {lifestyle.schedule || lifestyle.spot ? (
             <View
               style={{
-                backgroundColor: theme.cardBackground,
+                backgroundColor: "#FFFFFF",
                 borderRadius: 16,
                 padding: 18,
                 marginBottom: 14,
-                borderWidth: 1,
-                borderColor: theme.borderDefault,
+                shadowColor: "#000",
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 2 },
+                elevation: 2,
               }}
             >
               <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700", marginBottom: 12 }}>
@@ -597,12 +622,15 @@ export default function ProfileScreen() {
           {/* Settings List */}
           <View
             style={{
-              backgroundColor: theme.cardBackground,
+              backgroundColor: "#FFFFFF",
               borderRadius: 16,
               marginBottom: 24,
               overflow: "hidden",
-              borderWidth: 1,
-              borderColor: theme.borderDefault,
+              shadowColor: "#000",
+              shadowOpacity: 0.06,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 2,
             }}
           >
             <SettingsItem
@@ -653,8 +681,8 @@ function SettingsItem({
         alignItems: "center",
         padding: 16,
         borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: theme.borderDefault,
-        backgroundColor: pressed ? theme.surface : "transparent",
+        borderBottomColor: "#F0EAF0",
+        backgroundColor: pressed ? "#F8F4F6" : "transparent",
       })}
     >
       <View style={{ width: 36 }}>{icon}</View>

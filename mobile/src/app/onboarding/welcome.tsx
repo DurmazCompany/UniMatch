@@ -161,7 +161,7 @@ const SLIDES: SlideData[] = [
     title: "Kampüsünde\naşkı bul",
     subtitle: "Üniversite hayatının en güzel macerası seni bekliyor.",
     emoji: "💕",
-    icon: <Heart size={52} color="#fff" fill="#fff" strokeWidth={0} />,
+    icon: <Heart size={64} color="#fff" fill="#fff" strokeWidth={0} />,
     accentColor: theme.primary,
   },
   {
@@ -169,7 +169,7 @@ const SLIDES: SlideData[] = [
     title: "Sadece üniversite\nöğrencileri",
     subtitle: "Sadece .edu uzantılı öğrenci mailiyle giriş yapılabiliyor. Gerçek bir kampüs deneyimi.",
     emoji: "🎓",
-    icon: <GraduationCap size={52} color="#fff" strokeWidth={1.5} />,
+    icon: <GraduationCap size={64} color="#fff" strokeWidth={2} />,
     accentColor: "#7C3AED",
   },
   {
@@ -177,7 +177,7 @@ const SLIDES: SlideData[] = [
     title: "Aynı kampüste\neşleş",
     subtitle: "Aynı koridorları paylaştığın biriyle gerçek bir bağlantı kur.",
     emoji: "📍",
-    icon: <MapPin size={52} color="#fff" fill="rgba(255,255,255,0.2)" strokeWidth={1.5} />,
+    icon: <MapPin size={64} color="#fff" fill="rgba(255,255,255,0.35)" strokeWidth={2} />,
     accentColor: "#0EA5E9",
   },
 ];
@@ -364,7 +364,7 @@ export default function WelcomeScreen() {
         <View
           style={{
             position: "absolute",
-            bottom: insets.bottom + 40,
+            bottom: Math.max(insets.bottom, 20) + 28,
             left: 0,
             right: 0,
             alignItems: "center",
