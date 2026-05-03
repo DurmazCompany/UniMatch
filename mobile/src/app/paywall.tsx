@@ -1,4 +1,4 @@
-import { useState, useMemo, ReactElement } from "react";
+import { useState, useMemo, ReactElement, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,13 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+} from "react-native-reanimated";
 import { theme } from "@/lib/theme";
 import {
   getOfferings,
@@ -290,6 +297,32 @@ function PackageCard({
   const isSelected = selectedId === pkg.id;
   const isRecommended = pkg.isRecommended;
 
+  // Glow animation when selected
+  const glowRadius = useSharedValue(isSelected ? 16 : 6);
+  const glowOpacity = useSharedValue(isSelected ? 0.35 : 0.06);
+  const pulse = useSharedValue(1);
+
+  useEffect(() => {
+    glowRadius.value = withTiming(isSelected ? 20 : 6, { duration: 280 });
+    glowOpacity.value = withTiming(isSelected ? 0.4 : 0.06, { duration: 280 });
+    if (isSelected) {
+      pulse.value = withRepeat(
+        withSequence(withTiming(1.35, { duration: 900 }), withTiming(1, { duration: 900 })),
+        -1,
+        true
+      );
+    } else {
+      pulse.value = withTiming(1, { duration: 200 });
+    }
+  }, [isSelected]);
+
+  const glowStyle = useAnimatedStyle(() => ({
+    shadowOpacity: glowOpacity.value,
+    shadowRadius: glowRadius.value,
+  }));
+
+  const accentGlow = pkg.accentColor ?? theme.primary;
+
   return (
     <View style={{ marginBottom: 16 }}>
       <Pressable
@@ -303,19 +336,20 @@ function PackageCard({
           transform: [{ scale: pressed ? 0.98 : 1 }],
         })}
       >
-        <View
-          style={{
-            backgroundColor: isRecommended ? "#FFF0F3" : "#FFFFFF",
-            borderRadius: 20,
-            overflow: "hidden",
-            borderWidth: isRecommended ? 2 : 1,
-            borderColor: isRecommended ? "#E8436A" : "#F0EAF0",
-            shadowColor: "#000",
-            shadowOpacity: 0.06,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 2,
-          }}
+        <Animated.View
+          style={[
+            {
+              backgroundColor: isRecommended ? "#FFF0F3" : "#FFFFFF",
+              borderRadius: 20,
+              overflow: "hidden",
+              borderWidth: isSelected ? 2 : isRecommended ? 2 : 1,
+              borderColor: isSelected ? accentGlow : isRecommended ? "#E8436A" : "#F0EAF0",
+              shadowColor: isSelected ? accentGlow : "#000",
+              shadowOffset: { width: 0, height: 2 },
+              elevation: isSelected ? 8 : 2,
+            },
+            glowStyle,
+          ]}
         >
           {/* Recommended badge */}
           {isRecommended ? (
@@ -453,9 +487,8 @@ function PackageCard({
                 ) : null}
               </View>
             ) : null}
-          </View>
-        </View>
-      </Pressable>
+          </Animated.View>
+        </Pressable>
     </View>
   );
 }
@@ -770,12 +803,13 @@ export default function PaywallScreen() {
             borderTopColor: "#F0EAF0",
           }}
         >
+          {/* Section header */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
-              marginBottom: 14,
+              marginBottom: 18,
             }}
           >
             <Sparkles size={18} color={theme.primary} />
@@ -790,60 +824,97 @@ export default function PaywallScreen() {
             </Text>
           </View>
 
-          <Text
+          {/* Boost subsection */}
+          <View
             style={{
-              color: theme.textSecondary,
-              fontSize: 12,
-              fontFamily: "PlusJakartaSans_600SemiBold",
-              marginBottom: 10,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 12,
+              shadowColor: "#000",
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 1 },
+              elevation: 1,
+              borderWidth: 1,
+              borderColor: "#F0EAF0",
             }}
           >
-            Boost
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={{ gap: 10 }}
-          >
-            {BOOST_PACKAGES.map((addon) => (
-              <AddonCard
-                key={addon.id}
-                addon={addon}
-                icon={<Zap size={20} color={theme.primary} />}
-                onPress={() => handlePurchaseAddon(addon)}
-                loading={purchasingAddonId === addon.id}
-              />
-            ))}
-          </ScrollView>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
+              <Zap size={15} color={theme.primary} />
+              <Text
+                style={{
+                  color: theme.textPrimary,
+                  fontSize: 14,
+                  fontFamily: "PlusJakartaSans_600SemiBold",
+                }}
+              >
+                Boost
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0 }}
+              contentContainerStyle={{ gap: 10, paddingTop: 12, paddingBottom: 4 }}
+            >
+              {BOOST_PACKAGES.map((addon) => (
+                <AddonCard
+                  key={addon.id}
+                  addon={addon}
+                  icon={<Zap size={20} color={theme.primary} />}
+                  onPress={() => handlePurchaseAddon(addon)}
+                  loading={purchasingAddonId === addon.id}
+                />
+              ))}
+            </ScrollView>
+          </View>
 
-          <Text
+          {/* Super Like subsection */}
+          <View
             style={{
-              color: theme.textSecondary,
-              fontSize: 12,
-              fontFamily: "PlusJakartaSans_600SemiBold",
-              marginBottom: 10,
-              marginTop: 16,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 4,
+              shadowColor: "#000",
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 1 },
+              elevation: 1,
+              borderWidth: 1,
+              borderColor: "#F0EAF0",
             }}
           >
-            Süper Beğeni
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={{ gap: 10 }}
-          >
-            {SUPER_LIKE_PACKAGES.map((addon) => (
-              <AddonCard
-                key={addon.id}
-                addon={addon}
-                icon={<Star size={20} color="#FFD700" />}
-                onPress={() => handlePurchaseAddon(addon)}
-                loading={purchasingAddonId === addon.id}
-              />
-            ))}
-          </ScrollView>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
+              <Star size={15} color="#FFD700" />
+              <Text
+                style={{
+                  color: theme.textPrimary,
+                  fontSize: 14,
+                  fontFamily: "PlusJakartaSans_600SemiBold",
+                }}
+              >
+                Süper Beğeni
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0 }}
+              contentContainerStyle={{ gap: 10, paddingTop: 12, paddingBottom: 4 }}
+            >
+              {SUPER_LIKE_PACKAGES.map((addon) => (
+                <AddonCard
+                  key={addon.id}
+                  addon={addon}
+                  icon={<Star size={20} color="#FFD700" />}
+                  onPress={() => handlePurchaseAddon(addon)}
+                  loading={purchasingAddonId === addon.id}
+                />
+              ))}
+            </ScrollView>
+          </View>
         </View>
 
         {/* Restore purchases */}

@@ -329,10 +329,10 @@ export default function EditProfileScreen() {
                       height: slotSize * 1.3,
                       borderRadius: 14,
                       overflow: "hidden",
-                      backgroundColor: "#1E1E1E",
+                      backgroundColor: photo ? "#F0EAF0" : "#F8F4F6",
                       borderWidth: 1.5,
                       borderStyle: photo ? "solid" : "dashed",
-                      borderColor: photo ? theme.primary : theme.borderDefault,
+                      borderColor: photo ? theme.primary : "#D4B8C4",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
@@ -371,7 +371,7 @@ export default function EditProfileScreen() {
                       >
                         <Text
                           style={{
-                            color: i === photos.length ? theme.primary : "#3A3A4A",
+                            color: i === photos.length ? theme.primary : "#C4A8B4",
                             fontSize: 26,
                             fontWeight: "300",
                           }}
@@ -389,11 +389,15 @@ export default function EditProfileScreen() {
             {showPicker ? (
               <View
                 style={{
-                  backgroundColor: "#1E1E1E",
+                  backgroundColor: "#FFFFFF",
                   borderRadius: 14,
                   padding: 16,
                   borderWidth: 1,
-                  borderColor: theme.borderDefault,
+                  borderColor: "#F0EAF0",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.06,
+                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 2 },
                 }}
               >
                 <Text
@@ -452,9 +456,9 @@ export default function EditProfileScreen() {
                 testID="add-photo-button"
                 style={({ pressed }) => ({
                   opacity: pressed || photos.length >= 6 ? 0.6 : 1,
-                  backgroundColor: "#1E1E1E",
+                  backgroundColor: "rgba(212,83,126,0.06)",
                   borderWidth: 1.5,
-                  borderColor: theme.borderDefault,
+                  borderColor: "rgba(212,83,126,0.25)",
                   borderRadius: 12,
                   paddingVertical: 12,
                   alignItems: "center",
@@ -500,8 +504,8 @@ export default function EditProfileScreen() {
                       paddingVertical: 10,
                       borderRadius: 100,
                       borderWidth: 1.5,
-                      borderColor: isSelected ? theme.primary : theme.borderDefault,
-                      backgroundColor: isSelected ? "rgba(225,29,72,0.15)" : "#1E1E1E",
+                      borderColor: isSelected ? theme.primary : "#E8D8E0",
+                      backgroundColor: isSelected ? "rgba(212,83,126,0.10)" : "#F8F4F6",
                       flexDirection: "row",
                       alignItems: "center",
                       gap: 6,
@@ -543,9 +547,13 @@ export default function EditProfileScreen() {
           paddingHorizontal: 20,
           paddingTop: 12,
           paddingBottom: insets.bottom + 16,
-          backgroundColor: "rgba(10,10,15,0.95)",
+          backgroundColor: "#FFFFFF",
           borderTopWidth: 1,
-          borderTopColor: theme.borderDefault,
+          borderTopColor: "#F0EAF0",
+          shadowColor: "#000",
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: -2 },
         }}
       >
         <Pressable
