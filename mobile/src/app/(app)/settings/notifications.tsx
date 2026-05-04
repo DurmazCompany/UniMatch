@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { View, Text, Switch, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Switch, Pressable, ActivityIndicator, StatusBar, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
-import { ChevronLeft } from "lucide-react-native";
-import { theme } from "@/lib/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "@/lib/theme";
+import { UMCard } from "@/components/ui";
+
+type IoniconName = keyof typeof Ionicons.glyphMap;
 
 const STORAGE_KEY = "notification_preferences";
 
@@ -31,7 +34,6 @@ export default function NotificationsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load preferences from AsyncStorage
   useEffect(() => {
     const loadPreferences = async () => {
       try {
@@ -48,7 +50,6 @@ export default function NotificationsScreen() {
     loadPreferences();
   }, []);
 
-  // Save preferences to AsyncStorage
   const savePreferences = useCallback(async (newPreferences: NotificationPreferences) => {
     setIsSaving(true);
     try {
@@ -71,24 +72,23 @@ export default function NotificationsScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.background, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color={theme.primary} size="large" />
+      <View style={{ flex: 1, backgroundColor: Colors.bgLight, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={Colors.primary} size="large" />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }} testID="notifications-screen">
-      {/* Header */}
+    <View style={{ flex: 1, backgroundColor: Colors.bgLight }} testID="notifications-screen">
+      <StatusBar barStyle="dark-content" />
       <View
         style={{
-          paddingTop: insets.top + 8,
-          paddingHorizontal: 16,
+          paddingTop: insets.top + 12,
+          paddingHorizontal: 20,
           paddingBottom: 16,
           flexDirection: "row",
           alignItems: "center",
-          borderBottomWidth: 0.5,
-          borderBottomColor: theme.borderDefault,
+          gap: 14,
         }}
       >
         <Pressable
@@ -98,52 +98,41 @@ export default function NotificationsScreen() {
             router.back();
           }}
           style={({ pressed }) => ({
-            padding: 8,
-            marginLeft: -8,
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: Colors.white,
+            alignItems: "center",
+            justifyContent: "center",
             opacity: pressed ? 0.7 : 1,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 6,
+            elevation: 2,
           })}
         >
-          <ChevronLeft size={28} color={theme.textPrimary} />
+          <Ionicons name="chevron-back-outline" size={24} color={Colors.textDark} />
         </Pressable>
-        <Text
-          style={{
-            flex: 1,
-            color: theme.textPrimary,
-            fontSize: 18,
-            fontWeight: "600",
-            textAlign: "center",
-            marginRight: 28,
-          }}
-        >
+        <Text style={{ flex: 1, color: Colors.textDark, fontSize: 24, fontFamily: "DMSans_700Bold" }}>
           Bildirimler
         </Text>
-        {isSaving ? (
-          <ActivityIndicator size="small" color={theme.primary} style={{ position: "absolute", right: 16, top: insets.top + 16 }} />
-        ) : null}
+        {isSaving ? <ActivityIndicator size="small" color={Colors.primary} /> : null}
       </View>
 
-      {/* Preferences List */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 24 }}>
-        <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: "500", marginBottom: 12, marginLeft: 4 }}>
-          BILDIRIM TERCIHLERI
-        </Text>
-
-        <View
-          style={{
-            backgroundColor: theme.surface,
-            borderRadius: 14,
-            overflow: "hidden",
-          }}
-        >
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: insets.bottom + 32 }}>
+        <UMCard>
           <NotificationRow
             testID="toggle-new-matches"
-            label="Yeni Eslesemeler"
-            description="Birisi seninle eslesti"
+            icon="heart-outline"
+            label="Yeni Eşleşmeler"
+            description="Birisi seninle eşleşti"
             value={preferences.newMatches}
             onToggle={() => handleToggle("newMatches")}
           />
           <NotificationRow
             testID="toggle-messages"
+            icon="chatbubble-outline"
             label="Mesajlar"
             description="Yeni mesaj aldığında bildirim al"
             value={preferences.messages}
@@ -151,47 +140,51 @@ export default function NotificationsScreen() {
           />
           <NotificationRow
             testID="toggle-super-likes"
-            label="Super Likeler"
-            description="Birisi sana super like atti"
+            icon="star-outline"
+            label="Süper Beğeniler"
+            description="Birisi sana süper beğeni attı"
             value={preferences.superLikes}
             onToggle={() => handleToggle("superLikes")}
           />
           <NotificationRow
             testID="toggle-daily-reminders"
-            label="Gunluk Hatirlatmalar"
-            description="Gunluk aktivite hatirlatmalari"
+            icon="notifications-outline"
+            label="Günlük Hatırlatmalar"
+            description="Günlük aktivite hatırlatmaları"
             value={preferences.dailyReminders}
             onToggle={() => handleToggle("dailyReminders")}
           />
           <NotificationRow
             testID="toggle-promotions"
+            icon="sparkles-outline"
             label="Promosyonlar"
-            description="Ozel firsatlar ve kampanyalar"
+            description="Özel fırsatlar ve kampanyalar"
             value={preferences.promotions}
             onToggle={() => handleToggle("promotions")}
             isLast
           />
-        </View>
+        </UMCard>
 
-        {/* Info text */}
         <Text
           style={{
-            color: theme.textSecondary,
-            fontSize: 13,
+            color: Colors.textMuted,
+            fontSize: 12,
             lineHeight: 18,
             marginTop: 16,
             marginHorizontal: 4,
+            fontFamily: "DMSans_400Regular",
           }}
         >
-          Bildirim tercihlerini istedigin zaman degistirebilirsin. Bildirimleri tamamen kapatmak icin cihaz ayarlarindan uygulamanin bildirim izinlerini kaldirabilirsin.
+          Bildirim tercihlerini istediğin zaman değiştirebilirsin. Bildirimleri tamamen kapatmak için cihaz ayarlarından uygulamanın bildirim izinlerini kaldırabilirsin.
         </Text>
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 function NotificationRow({
   testID,
+  icon,
   label,
   description,
   value,
@@ -199,6 +192,7 @@ function NotificationRow({
   isLast,
 }: {
   testID: string;
+  icon: IoniconName;
   label: string;
   description: string;
   value: boolean;
@@ -210,17 +204,29 @@ function NotificationRow({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderBottomWidth: isLast ? 0 : 0.5,
-        borderBottomColor: theme.borderDefault,
+        paddingVertical: 12,
+        gap: 14,
+        borderBottomWidth: isLast ? 0 : 1,
+        borderBottomColor: "rgba(0,0,0,0.05)",
       }}
     >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: Colors.primaryPale,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name={icon} size={18} color={Colors.primary} />
+      </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.textPrimary, fontSize: 16, fontWeight: "500" }}>
+        <Text style={{ color: Colors.textDark, fontSize: 14, fontFamily: "DMSans_600SemiBold" }}>
           {label}
         </Text>
-        <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 2 }}>
+        <Text style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2, fontFamily: "DMSans_400Regular" }}>
           {description}
         </Text>
       </View>
@@ -228,9 +234,9 @@ function NotificationRow({
         testID={testID}
         value={value}
         onValueChange={onToggle}
-        trackColor={{ false: "#3A3A3C", true: theme.primary }}
+        trackColor={{ false: "rgba(0,0,0,0.1)", true: Colors.primary }}
         thumbColor="#FFFFFF"
-        ios_backgroundColor="#3A3A3C"
+        ios_backgroundColor="rgba(0,0,0,0.1)"
       />
     </View>
   );

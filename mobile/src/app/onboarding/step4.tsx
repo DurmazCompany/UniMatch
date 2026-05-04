@@ -4,43 +4,46 @@ import {
   Text,
   Pressable,
   ScrollView,
-  ActivityIndicator,
+  StatusBar,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAppStore } from "@/lib/store/app-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { theme, gradients } from "@/lib/theme";
-import { ChevronLeft, Music, Dribbble, Gamepad2, Film, BookOpen, Plane, Camera, UtensilsCrossed, Palette, Dumbbell, Code, PersonStanding, Coffee, TreePine, Music2, Heart, Globe, ShoppingBag, Star, Mic, Tv, Hash, Mic2 } from "lucide-react-native";
+import { Colors, Radius } from "@/lib/theme";
+import { UMButton } from "@/components/ui";
+import { OnboardingHeader } from "./step1";
 
-const HOBBIES = [
-  { value: "music", label: "Muzik", icon: Music },
-  { value: "sports", label: "Spor", icon: Dribbble },
-  { value: "gaming", label: "Oyun", icon: Gamepad2 },
-  { value: "movies", label: "Film/Dizi", icon: Film },
-  { value: "reading", label: "Kitap", icon: BookOpen },
-  { value: "travel", label: "Seyahat", icon: Plane },
-  { value: "photography", label: "Fotograf", icon: Camera },
-  { value: "cooking", label: "Yemek", icon: UtensilsCrossed },
-  { value: "art", label: "Sanat", icon: Palette },
-  { value: "fitness", label: "Fitness", icon: Dumbbell },
-  { value: "coding", label: "Kodlama", icon: Code },
-  { value: "dance", label: "Dans", icon: PersonStanding },
-  { value: "cafe", label: "Kafe Takilma", icon: Coffee },
-  { value: "yoga", label: "Yoga", icon: PersonStanding },
-  { value: "hiking", label: "Doga Yuruyusu", icon: TreePine },
-  { value: "concerts", label: "Konser", icon: Music2 },
-  { value: "volunteering", label: "Gonulluluk", icon: Heart },
-  { value: "languages", label: "Yabanci Dil", icon: Globe },
-  { value: "fashion", label: "Moda", icon: ShoppingBag },
-  { value: "astrology", label: "Astroloji", icon: Star },
-  { value: "podcast", label: "Podcast", icon: Mic },
-  { value: "anime", label: "Anime/Manga", icon: Tv },
-  { value: "board_games", label: "Kutu Oyunlari", icon: Hash },
-  { value: "theater", label: "Tiyatro/Sanat", icon: Mic2 },
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+const HOBBIES: { value: string; label: string; icon: IoniconName }[] = [
+  { value: "music", label: "Müzik", icon: "musical-notes-outline" },
+  { value: "sports", label: "Spor", icon: "football-outline" },
+  { value: "gaming", label: "Oyun", icon: "game-controller-outline" },
+  { value: "movies", label: "Film/Dizi", icon: "film-outline" },
+  { value: "reading", label: "Kitap", icon: "book-outline" },
+  { value: "travel", label: "Seyahat", icon: "airplane-outline" },
+  { value: "photography", label: "Fotoğraf", icon: "camera-outline" },
+  { value: "cooking", label: "Yemek", icon: "restaurant-outline" },
+  { value: "art", label: "Sanat", icon: "color-palette-outline" },
+  { value: "fitness", label: "Fitness", icon: "barbell-outline" },
+  { value: "coding", label: "Kodlama", icon: "code-slash-outline" },
+  { value: "dance", label: "Dans", icon: "body-outline" },
+  { value: "cafe", label: "Kafe Takılma", icon: "cafe-outline" },
+  { value: "yoga", label: "Yoga", icon: "leaf-outline" },
+  { value: "hiking", label: "Doğa Yürüyüşü", icon: "trail-sign-outline" },
+  { value: "concerts", label: "Konser", icon: "musical-note" },
+  { value: "volunteering", label: "Gönüllülük", icon: "heart-outline" },
+  { value: "languages", label: "Yabancı Dil", icon: "globe-outline" },
+  { value: "fashion", label: "Moda", icon: "bag-outline" },
+  { value: "astrology", label: "Astroloji", icon: "star-outline" },
+  { value: "podcast", label: "Podcast", icon: "mic-outline" },
+  { value: "anime", label: "Anime/Manga", icon: "tv-outline" },
+  { value: "board_games", label: "Kutu Oyunları", icon: "dice-outline" },
+  { value: "theater", label: "Tiyatro/Sanat", icon: "ticket-outline" },
 ];
 
 export default function Step4Screen() {
@@ -72,7 +75,6 @@ export default function Step4Screen() {
     setLoading(true);
     setError("");
     try {
-      // Send arrays directly - backend will convert to JSON for storage
       const payload = {
         ...onboarding,
         hobbies: selectedHobbies,
@@ -85,7 +87,6 @@ export default function Step4Screen() {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Apply referral code if provided during sign-up
       if (onboarding.referralCode) {
         try {
           await api.post("/api/referrals/use", { code: onboarding.referralCode });
@@ -105,63 +106,26 @@ export default function Step4Screen() {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.background }}
-      contentContainerStyle={{ flexGrow: 1 }}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <LinearGradient
-        colors={gradients.background}
-        style={{
-          flex: 1,
-          paddingHorizontal: 28,
-          paddingTop: insets.top + 24,
-          paddingBottom: insets.bottom + 40,
-        }}
+    <View style={{ flex: 1, backgroundColor: Colors.bgLight }}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Progress */}
-        <View style={{ flexDirection: "row", gap: 6, marginBottom: 36 }}>
-          {[1, 2, 3, 4].map((step) => (
-            <View
-              key={step}
-              style={{
-                flex: 1,
-                height: 3,
-                borderRadius: 2,
-                backgroundColor: theme.primary,
-              }}
-            />
-          ))}
-        </View>
+        <OnboardingHeader step={4} />
 
-        <Pressable
-          onPress={() => router.back()}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            backgroundColor: theme.surface,
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 24,
-          }}
-        >
-          <ChevronLeft size={24} color={theme.textPrimary} />
-        </Pressable>
-
-        <Text style={{ color: theme.textPrimary, fontSize: 28, fontFamily: "Syne_700Bold", marginBottom: 8 }}>
+        <Text style={{ fontFamily: "DMSerifDisplay_400Regular", fontSize: 30, color: Colors.textDark, marginTop: 16 }}>
           Hobilerin
         </Text>
-        <Text style={{ color: theme.textSecondary, fontSize: 15, marginBottom: 8 }}>
+        <Text style={{ fontFamily: "DMSans_400Regular", fontSize: 14, color: Colors.textMuted, lineHeight: 20, marginTop: 6 }}>
           İlgi alanlarından en fazla 5 tane seç
         </Text>
-        <Text style={{ color: theme.accent, fontSize: 13, marginBottom: 28 }}>
+        <Text style={{ color: Colors.primary, fontSize: 13, marginTop: 4, marginBottom: 24, fontFamily: "DMSans_500Medium" }}>
           {selectedHobbies.length}/5 seçildi
         </Text>
 
-        {/* Hobbies grid */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 32 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
           {HOBBIES.map((hobby) => {
             const isSelected = selectedHobbies.includes(hobby.value);
             const isDisabled = !isSelected && selectedHobbies.length >= 5;
@@ -173,25 +137,19 @@ export default function Step4Screen() {
                 testID={`hobby-${hobby.value}`}
                 style={{
                   paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderRadius: 100,
-                  borderWidth: 1.5,
-                  borderColor: isSelected ? theme.primary : theme.borderDefault,
-                  backgroundColor: isSelected ? "rgba(225,29,72,0.15)" : theme.surface,
+                  paddingVertical: 10,
+                  borderRadius: Radius.pill,
+                  borderWidth: isSelected ? 0 : 1.5,
+                  borderColor: "rgba(0,0,0,0.1)",
+                  backgroundColor: isSelected ? Colors.primary : Colors.white,
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 8,
                   opacity: isDisabled ? 0.4 : 1,
                 }}
               >
-                <hobby.icon size={18} color={isSelected ? theme.accent : theme.textSecondary} />
-                <Text
-                  style={{
-                    color: isSelected ? theme.accent : theme.textSecondary,
-                    fontSize: 14,
-                    fontWeight: "600",
-                  }}
-                >
+                <Ionicons name={hobby.icon} size={16} color={isSelected ? Colors.white : Colors.textDark} />
+                <Text style={{ color: isSelected ? Colors.white : Colors.textDark, fontSize: 14, fontFamily: "DMSans_500Medium" }}>
                   {hobby.label}
                 </Text>
               </Pressable>
@@ -200,33 +158,17 @@ export default function Step4Screen() {
         </View>
 
         {error ? (
-          <Text style={{ color: theme.error, fontSize: 13, marginBottom: 16, textAlign: "center" }}>
+          <Text style={{ color: "#FF3B30", fontSize: 13, marginBottom: 12, textAlign: "center", fontFamily: "DMSans_400Regular" }}>
             {error}
           </Text>
         ) : null}
 
-        <View style={{ flex: 1 }} />
+        <View style={{ flex: 1, minHeight: 24 }} />
 
-        <Pressable
-          onPress={handleNext}
-          disabled={loading}
-          testID="next-button"
-          style={({ pressed }) => ({ opacity: pressed || loading ? 0.8 : 1 })}
-        >
-          <LinearGradient
-            colors={gradients.button}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{ paddingVertical: 18, borderRadius: 14, alignItems: "center" }}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={{ color: "#fff", fontSize: 17, fontWeight: "700" }}>Tamamla →</Text>
-            )}
-          </LinearGradient>
-        </Pressable>
-      </LinearGradient>
-    </ScrollView>
+        <View style={{ marginTop: 32 }}>
+          <UMButton variant="primary" label="Tamamla" loading={loading} disabled={selectedHobbies.length < 1} onPress={handleNext} />
+        </View>
+      </ScrollView>
+    </View>
   );
 }

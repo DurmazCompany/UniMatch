@@ -3,25 +3,22 @@ import * as SecureStore from "expo-secure-store";
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
+  StatusBar,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { authClient } from "@/lib/auth/auth-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { SESSION_QUERY_KEY } from "@/lib/auth/use-session";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { theme, gradients } from "@/lib/theme";
-import { ChevronLeft, Eye, EyeOff } from "lucide-react-native";
+import { Colors, Spacing } from "@/lib/theme";
+import { UMInput, UMButton } from "@/components/ui";
 
 const isUniversityEmail = (email: string) => {
-  // Accepts .edu domains AND common test domains
   return email.includes(".edu") || email.includes("@yeditepe.") || email.includes("@test.");
 };
 
@@ -36,8 +33,6 @@ export default function SignInScreen() {
     });
   }, []);
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
 
@@ -84,268 +79,93 @@ export default function SignInScreen() {
     router.push("/forgot-password");
   };
 
-  const isFormValid = email.trim() && password;
-
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.background }}
+      style={{ flex: 1, backgroundColor: Colors.bgLight }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      <StatusBar barStyle="dark-content" />
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: insets.top + 40, paddingBottom: insets.bottom + 32 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={gradients.background}
-          style={{
-            flex: 1,
-            paddingHorizontal: 28,
-            paddingTop: insets.top + 20,
-            paddingBottom: insets.bottom + 40,
-          }}
+        <Text style={{ fontFamily: "DMSerifDisplay_400Regular", fontSize: 36, color: Colors.textDark }}>
+          Hoş geldin 👋
+        </Text>
+        <Text style={{ fontFamily: "DMSans_400Regular", fontSize: 16, color: Colors.textMuted, marginTop: 6 }}>
+          Hesabına giriş yap
+        </Text>
+
+        <View style={{ height: 32 }} />
+
+        <View style={{ gap: 16 }}>
+          <UMInput
+            label="E-posta"
+            value={email}
+            onChangeText={(t) => { setEmail(t); setError(""); }}
+            placeholder="ornek@yeditepe.edu.tr"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            testID="email-input"
+          />
+          <UMInput
+            label="Şifre"
+            value={password}
+            onChangeText={(t) => { setPassword(t); setError(""); }}
+            placeholder="Şifrenizi girin"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            onSubmitEditing={handleSignIn}
+            testID="password-input"
+          />
+        </View>
+
+        <Pressable
+          onPress={handleForgotPassword}
+          testID="forgot-password-link"
+          style={{ alignSelf: "flex-end", marginTop: 8 }}
         >
-          {/* Back Button */}
-          <Pressable
-            onPress={() => router.back()}
-            testID="back-button"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              backgroundColor: theme.surface,
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 32,
-            }}
-          >
-            <ChevronLeft size={24} color={theme.textPrimary} />
-          </Pressable>
-
-          {/* Header */}
-          <Text
-            style={{
-              color: theme.textPrimary,
-              fontSize: 32,
-              fontFamily: "Syne_700Bold",
-              letterSpacing: -0.5,
-              marginBottom: 8,
-            }}
-          >
-            Giris Yap
+          <Text style={{ color: Colors.primary, fontSize: 13, fontFamily: "DMSans_500Medium" }}>
+            Şifreni mi unuttun?
           </Text>
-          <Text
-            style={{
-              color: theme.textSecondary,
-              fontSize: 16,
-              marginBottom: 32,
-              lineHeight: 24,
-            }}
-          >
-            Universite e-postanla devam et
+        </Pressable>
+
+        {error ? (
+          <Text style={{ color: "#FF3B30", fontSize: 13, fontFamily: "DMSans_400Regular", marginTop: 16, textAlign: "center" }}>
+            {error}
           </Text>
+        ) : null}
 
-          {/* Email Input */}
-          <View style={{ marginBottom: 20 }}>
-            <Text
-              style={{
-                color: theme.textSecondary,
-                fontSize: 12,
-                fontWeight: "600",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 10,
-              }}
-            >
-              Universite E-Postaniz
-            </Text>
-            <TextInput
-              value={email}
-              onChangeText={(t) => {
-                setEmail(t);
-                setError("");
-              }}
-              placeholder="isim@universite.edu.tr"
-              placeholderTextColor={theme.textPlaceholder}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              onFocus={() => setFocusedField("email")}
-              onBlur={() => setFocusedField(null)}
-              testID="email-input"
-              style={{
-                backgroundColor: theme.surface,
-                borderWidth: 1.5,
-                borderColor:
-                  focusedField === "email"
-                    ? theme.primary
-                    : theme.borderDefault,
-                borderRadius: theme.radius.pill,
-                paddingHorizontal: 20,
-                paddingVertical: 18,
-                color: theme.base.text,
-                fontSize: 17,
-              }}
-            />
-            <Text
-              style={{
-                color: theme.textPlaceholder,
-                fontSize: 13,
-                marginTop: 8,
-              }}
-            >
-              Sadece .edu e-postalari kabul edilir
-            </Text>
-          </View>
+        <View style={{ height: 32 }} />
 
-          {/* Password Input */}
-          <View style={{ marginBottom: 12 }}>
-            <Text
-              style={{
-                color: theme.textSecondary,
-                fontSize: 12,
-                fontWeight: "600",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 10,
-              }}
-            >
-              Sifre
-            </Text>
-            <View style={{ position: "relative" }}>
-              <TextInput
-                value={password}
-                onChangeText={(t) => {
-                  setPassword(t);
-                  setError("");
-                }}
-                placeholder="Sifrenizi girin"
-                placeholderTextColor={theme.textPlaceholder}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onFocus={() => setFocusedField("password")}
-                onBlur={() => setFocusedField(null)}
-                onSubmitEditing={handleSignIn}
-                testID="password-input"
-                style={{
-                  backgroundColor: theme.surface,
-                  borderWidth: 1.5,
-                  borderColor:
-                    focusedField === "password"
-                      ? theme.primary
-                      : theme.borderDefault,
-                  borderRadius: theme.radius.pill,
-                  paddingHorizontal: 20,
-                  paddingVertical: 18,
-                  paddingRight: 56,
-                  color: theme.base.text,
-                  fontSize: 17,
-                }}
-              />
-              <Pressable
-                onPress={() => setShowPassword(!showPassword)}
-                testID="toggle-password-visibility"
-                style={{
-                  position: "absolute",
-                  right: 16,
-                  top: 0,
-                  bottom: 0,
-                  justifyContent: "center",
-                }}
-              >
-                {showPassword ? (
-                  <EyeOff size={22} color={theme.textSecondary} />
-                ) : (
-                  <Eye size={22} color={theme.textSecondary} />
-                )}
-              </Pressable>
-            </View>
-          </View>
+        <UMButton
+          variant="primary"
+          label="Giriş Yap"
+          loading={loading}
+          onPress={handleSignIn}
+        />
 
-          {/* Forgot Password Link */}
-          <Pressable
-            onPress={handleForgotPassword}
-            testID="forgot-password-link"
-            style={{ alignSelf: "flex-end", marginBottom: 24 }}
-          >
-            <Text
-              style={{
-                color: theme.primary,
-                fontSize: 14,
-                fontWeight: "600",
-              }}
-            >
-              Sifremi Unuttum
+        <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 24 }}>
+          <View style={{ flex: 1, height: 1, backgroundColor: "rgba(0,0,0,0.08)" }} />
+          <Text style={{ marginHorizontal: 12, color: Colors.textMuted, fontFamily: "DMSans_400Regular", fontSize: 13 }}>
+            veya
+          </Text>
+          <View style={{ flex: 1, height: 1, backgroundColor: "rgba(0,0,0,0.08)" }} />
+        </View>
+
+        <View style={{ flexDirection: "row", justifyContent: "center" }}>
+          <Text style={{ color: Colors.textMuted, fontFamily: "DMSans_400Regular", fontSize: 14 }}>
+            Hesabın yok mu?{" "}
+          </Text>
+          <Pressable onPress={() => router.replace("/sign-up")} testID="sign-up-link">
+            <Text style={{ color: Colors.primary, fontFamily: "DMSans_600SemiBold", fontSize: 14 }}>
+              Kayıt Ol
             </Text>
           </Pressable>
-
-          {/* Error Message */}
-          {error ? (
-            <Text
-              style={{
-                color: theme.error,
-                fontSize: 14,
-                marginBottom: 16,
-                textAlign: "center",
-              }}
-            >
-              {error}
-            </Text>
-          ) : null}
-
-          {/* Sign In Button */}
-          <Pressable
-            onPress={handleSignIn}
-            disabled={loading || !isFormValid}
-            testID="sign-in-button"
-            style={({ pressed }) => ({
-              opacity: pressed || !isFormValid ? 0.7 : 1,
-            })}
-          >
-            <LinearGradient
-              colors={theme.buttonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                paddingVertical: 18,
-                borderRadius: theme.radius.pill,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: "#fff", fontSize: 17, fontWeight: "700" }}>
-                {loading ? <ActivityIndicator color="#fff" /> : "Giris Yap"}
-              </Text>
-            </LinearGradient>
-          </Pressable>
-
-          {/* Sign Up Link */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              marginTop: 24,
-            }}
-          >
-            <Text style={{ color: theme.textSecondary, fontSize: 15 }}>
-              Hesabin yok mu?{" "}
-            </Text>
-            <Pressable
-              onPress={() => router.replace("/sign-up")}
-              testID="sign-up-link"
-            >
-              <Text
-                style={{
-                  color: theme.primary,
-                  fontSize: 15,
-                  fontWeight: "600",
-                }}
-              >
-                Kayit Ol
-              </Text>
-            </Pressable>
-          </View>
-        </LinearGradient>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

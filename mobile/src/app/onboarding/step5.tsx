@@ -1,14 +1,15 @@
 import { useState, useRef } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator, Image } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { View, Text, Pressable, ScrollView, ActivityIndicator, Image, StatusBar } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAppStore } from "@/lib/store/app-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { theme, gradients } from "@/lib/theme";
-import { ChevronLeft, Camera, RotateCcw, Check, X } from "lucide-react-native";
+import { Colors, Radius } from "@/lib/theme";
+import { UMButton } from "@/components/ui";
+import { OnboardingHeader } from "./step1";
 import { CameraView, useCameraPermissions } from "expo-camera";
 
 type CameraViewRef = {
@@ -86,95 +87,48 @@ export default function Step5Screen() {
     await requestPermission();
   };
 
-  // Permission not yet determined - show loading
   if (permission === null) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.background, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" color={theme.primary} />
+      <View style={{ flex: 1, backgroundColor: Colors.bgLight, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
-  // Permission denied
   const renderPermissionDenied = () => (
-    <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
+    <View style={{ alignItems: "center", paddingHorizontal: 8 }}>
       <View
         style={{
-          width: 100,
-          height: 100,
-          borderRadius: 50,
-          backgroundColor: "rgba(239,68,68,0.15)",
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+          backgroundColor: "rgba(255,59,48,0.12)",
           alignItems: "center",
           justifyContent: "center",
-          marginBottom: 24,
+          marginBottom: 20,
         }}
       >
-        <X size={48} color={theme.error} />
+        <Ionicons name="close-outline" size={40} color="#FF3B30" />
       </View>
-      <Text
-        style={{
-          color: theme.textPrimary,
-          fontSize: 20,
-          fontFamily: "Syne_700Bold",
-          marginBottom: 12,
-          textAlign: "center",
-        }}
-      >
+      <Text style={{ color: Colors.textDark, fontSize: 20, fontFamily: "DMSans_700Bold", marginBottom: 12, textAlign: "center" }}>
         Kamera izni gerekli
       </Text>
-      <Text
-        style={{
-          color: theme.textSecondary,
-          fontSize: 15,
-          textAlign: "center",
-          lineHeight: 24,
-          marginBottom: 28,
-        }}
-      >
-        Selfie doğrulaması için kamera erişimine izin vermen gerekiyor. Ayarlardan izin verebilirsin.
+      <Text style={{ color: Colors.textMuted, fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 24, fontFamily: "DMSans_400Regular" }}>
+        Selfie doğrulaması için kamera erişimine izin vermen gerekiyor.
       </Text>
-      <Pressable
-        onPress={handleRequestPermission}
-        testID="request-permission-button"
-        style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, width: "100%" })}
-      >
-        <LinearGradient
-          colors={gradients.button}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ paddingVertical: 16, borderRadius: 14, alignItems: "center" }}
-        >
-          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Tekrar Dene</Text>
-        </LinearGradient>
-      </Pressable>
+      <UMButton variant="primary" label="Tekrar Dene" onPress={handleRequestPermission} />
     </View>
   );
 
-  // Camera view
   const renderCamera = () => (
-    <View
-      style={{
-        width: "100%",
-        height: 320,
-        borderRadius: 24,
-        overflow: "hidden",
-        marginBottom: 24,
-      }}
-    >
+    <View style={{ width: "100%", height: 320, borderRadius: Radius.card, overflow: "hidden", marginBottom: 20 }}>
       <CameraView
         ref={cameraRef as React.RefObject<CameraView>}
         style={{ flex: 1 }}
         facing="front"
         onCameraReady={() => setCameraReady(true)}
       >
-        {/* Overlay for face guide */}
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <View
             style={{
               width: 200,
@@ -187,177 +141,80 @@ export default function Step5Screen() {
           />
         </View>
 
-        {/* Camera loading overlay */}
         {!cameraReady ? (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: theme.surface,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={{ color: theme.textSecondary, marginTop: 12, fontSize: 14 }}>Kamera açılıyor...</Text>
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: Colors.white, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={{ color: Colors.textMuted, marginTop: 12, fontSize: 14, fontFamily: "DMSans_400Regular" }}>Kamera açılıyor...</Text>
           </View>
         ) : null}
       </CameraView>
     </View>
   );
 
-  // Preview captured photo
   const renderPreview = () => (
-    <View
-      style={{
-        width: "100%",
-        height: 320,
-        borderRadius: 24,
-        overflow: "hidden",
-        marginBottom: 24,
-        position: "relative",
-      }}
-    >
-      <Image
-        source={{ uri: capturedPhoto ?? "" }}
-        style={{ width: "100%", height: "100%" }}
-        resizeMode="cover"
-      />
-      {/* Success badge */}
+    <View style={{ width: "100%", height: 320, borderRadius: Radius.card, overflow: "hidden", marginBottom: 20, position: "relative" }}>
+      <Image source={{ uri: capturedPhoto ?? "" }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
       <View
         style={{
           position: "absolute",
-          bottom: 16,
-          left: 16,
+          bottom: 14,
+          left: 14,
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: "rgba(16,185,129,0.9)",
-          paddingHorizontal: 14,
-          paddingVertical: 8,
+          backgroundColor: "rgba(76,217,100,0.95)",
+          paddingHorizontal: 12,
+          paddingVertical: 6,
           borderRadius: 20,
           gap: 6,
         }}
       >
-        <Check size={16} color="#fff" />
-        <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>Selfie hazır</Text>
+        <Ionicons name="checkmark-outline" size={16} color="#fff" />
+        <Text style={{ color: "#fff", fontSize: 13, fontFamily: "DMSans_600SemiBold" }}>Selfie hazır</Text>
       </View>
     </View>
   );
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.background }}
-      contentContainerStyle={{ flexGrow: 1 }}
-      showsVerticalScrollIndicator={false}
-    >
-      <LinearGradient
-        colors={gradients.background}
-        style={{
-          flex: 1,
-          paddingHorizontal: 28,
-          paddingTop: insets.top + 24,
-          paddingBottom: insets.bottom + 40,
-        }}
+    <View style={{ flex: 1, backgroundColor: Colors.bgLight }}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Progress */}
-        <View style={{ flexDirection: "row", gap: 6, marginBottom: 36 }}>
-          {[1, 2, 3, 4, 5].map((step) => (
-            <View
-              key={step}
-              style={{
-                flex: 1,
-                height: 3,
-                borderRadius: 2,
-                backgroundColor: theme.primary,
-              }}
-            />
-          ))}
-        </View>
+        <OnboardingHeader step={5} />
 
-        <Pressable
-          onPress={() => router.back()}
-          testID="back-button"
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            backgroundColor: theme.surface,
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 24,
-          }}
-        >
-          <ChevronLeft size={24} color={theme.textPrimary} />
-        </Pressable>
-
-        {/* Header */}
-        <View style={{ alignItems: "center", marginBottom: 24 }}>
+        <View style={{ alignItems: "center", marginTop: 16, marginBottom: 24 }}>
           <View
             style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: "rgba(225,29,72,0.15)",
-              borderWidth: 2,
-              borderColor: theme.primary,
+              width: 72,
+              height: 72,
+              borderRadius: 36,
+              backgroundColor: Colors.primaryPale,
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 20,
-              shadowColor: theme.primary,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.4,
-              shadowRadius: 16,
+              marginBottom: 16,
             }}
           >
-            <Camera size={36} color={theme.primary} />
+            <Ionicons name="camera-outline" size={32} color={Colors.primary} />
           </View>
-
-          <Text
-            style={{
-              color: theme.textPrimary,
-              fontSize: 26,
-              fontFamily: "Syne_700Bold",
-              marginBottom: 8,
-              textAlign: "center",
-            }}
-          >
+          <Text style={{ color: Colors.textDark, fontFamily: "DMSerifDisplay_400Regular", fontSize: 28, marginBottom: 8, textAlign: "center" }}>
             Selfie doğrulaması
           </Text>
-          <Text
-            style={{
-              color: theme.textSecondary,
-              fontSize: 15,
-              textAlign: "center",
-              lineHeight: 24,
-              paddingHorizontal: 10,
-            }}
-          >
+          <Text style={{ color: Colors.textMuted, fontFamily: "DMSans_400Regular", fontSize: 14, textAlign: "center", lineHeight: 20 }}>
             Yüzünü kameraya göster ve selfie çek.{"\n"}Sahte profillere izin vermiyoruz!
           </Text>
         </View>
 
-        {/* Camera or Preview or Permission Denied */}
-        {!permission.granted ? (
-          renderPermissionDenied()
-        ) : capturedPhoto ? (
-          renderPreview()
-        ) : (
-          renderCamera()
-        )}
+        {!permission.granted ? renderPermissionDenied() : capturedPhoto ? renderPreview() : renderCamera()}
 
         {error ? (
-          <Text style={{ color: theme.error, fontSize: 13, marginBottom: 16, textAlign: "center" }}>
+          <Text style={{ color: "#FF3B30", fontSize: 13, marginBottom: 12, textAlign: "center", fontFamily: "DMSans_400Regular" }}>
             {error}
           </Text>
         ) : null}
 
-        {/* Action buttons */}
         {permission.granted && !capturedPhoto ? (
-          // Capture button
-          <View style={{ alignItems: "center", marginBottom: 24 }}>
+          <View style={{ alignItems: "center", marginBottom: 16 }}>
             <Pressable
               onPress={handleCapture}
               disabled={!cameraReady}
@@ -367,115 +224,37 @@ export default function Step5Screen() {
                 width: 80,
                 height: 80,
                 borderRadius: 40,
-                backgroundColor: theme.primary,
+                backgroundColor: Colors.primary,
                 alignItems: "center",
                 justifyContent: "center",
-                shadowColor: theme.primary,
+                shadowColor: Colors.primary,
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.5,
+                shadowOpacity: 0.4,
                 shadowRadius: 12,
               })}
             >
-              <View
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 32,
-                  backgroundColor: "#fff",
-                  borderWidth: 3,
-                  borderColor: theme.primary,
-                }}
-              />
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#fff", borderWidth: 3, borderColor: Colors.primary }} />
             </Pressable>
-            <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 12 }}>
+            <Text style={{ color: Colors.textMuted, fontSize: 13, marginTop: 12, fontFamily: "DMSans_400Regular" }}>
               {cameraReady ? "Fotoğraf çekmek için dokun" : "Kamera hazırlanıyor..."}
             </Text>
           </View>
         ) : permission.granted && capturedPhoto ? (
-          // Retake and complete buttons
           <View style={{ gap: 12 }}>
-            {/* Retake button */}
-            <Pressable
-              onPress={handleRetake}
-              testID="retake-button"
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.8 : 1,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 14,
-                borderRadius: 14,
-                backgroundColor: theme.surface,
-                borderWidth: 1,
-                borderColor: theme.borderDefault,
-                gap: 8,
-              })}
-            >
-              <RotateCcw size={18} color={theme.textSecondary} />
-              <Text style={{ color: theme.textSecondary, fontSize: 15, fontWeight: "600" }}>
-                Tekrar Çek
-              </Text>
-            </Pressable>
-
-            {/* Complete verification button */}
-            <Pressable
-              onPress={() => handleComplete(true)}
-              disabled={loading}
-              testID="verify-complete-button"
-              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-            >
-              <LinearGradient
-                colors={gradients.button}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  paddingVertical: 18,
-                  borderRadius: 14,
-                  alignItems: "center",
-                  flexDirection: "row",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <>
-                    <Check size={20} color="#fff" />
-                    <Text style={{ color: "#fff", fontSize: 17, fontWeight: "700" }}>
-                      Doğrulamayı Tamamla
-                    </Text>
-                  </>
-                )}
-              </LinearGradient>
-            </Pressable>
-
-            {/* Skip button */}
-            <Pressable
-              onPress={() => handleComplete(false)}
-              disabled={loading}
-              testID="skip-verify-button"
-              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignItems: "center", paddingVertical: 8 })}
-            >
-              <Text style={{ color: theme.textSecondary, fontSize: 15 }}>Şimdi değil, atla</Text>
+            <UMButton variant="secondary" label="Tekrar Çek" icon="refresh-outline" onPress={handleRetake} />
+            <UMButton variant="primary" label="Doğrulamayı Tamamla" icon="checkmark-outline" loading={loading} onPress={() => handleComplete(true)} />
+            <Pressable onPress={() => handleComplete(false)} disabled={loading} testID="skip-verify-button" style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignItems: "center", paddingVertical: 8 })}>
+              <Text style={{ color: Colors.textMuted, fontSize: 14, fontFamily: "DMSans_500Medium" }}>Şimdi değil, atla</Text>
             </Pressable>
           </View>
         ) : null}
 
-        {/* Skip button when permission not granted */}
         {!permission.granted ? (
-          <View style={{ marginTop: 24 }}>
-            <Pressable
-              onPress={() => handleComplete(false)}
-              disabled={loading}
-              testID="skip-verify-button-no-permission"
-              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignItems: "center", paddingVertical: 8 })}
-            >
-              <Text style={{ color: theme.textSecondary, fontSize: 15 }}>Şimdi değil, atla</Text>
-            </Pressable>
-          </View>
+          <Pressable onPress={() => handleComplete(false)} disabled={loading} testID="skip-verify-button-no-permission" style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignItems: "center", paddingVertical: 12, marginTop: 16 })}>
+            <Text style={{ color: Colors.textMuted, fontSize: 14, fontFamily: "DMSans_500Medium" }}>Şimdi değil, atla</Text>
+          </Pressable>
         ) : null}
-      </LinearGradient>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

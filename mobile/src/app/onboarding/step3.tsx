@@ -8,17 +8,18 @@ import {
   ActionSheetIOS,
   Platform,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useAppStore } from "@/lib/store/app-store";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { theme, gradients } from "@/lib/theme";
-import { ChevronLeft } from "lucide-react-native";
+import { Colors } from "@/lib/theme";
+import { UMButton } from "@/components/ui";
+import { OnboardingHeader } from "./step1";
 import { authClient } from "@/lib/auth/auth-client";
-import * as FileSystem from "expo-file-system";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL!;
 
@@ -32,7 +33,6 @@ const uploadPhoto = async (uri: string): Promise<string | null> => {
     typeof authClient.getCookie === "function" ? authClient.getCookie() : "";
 
   try {
-    // For web platform, fetch the blob and create a proper File
     if (Platform.OS === "web") {
       const response = await fetch(uri);
       const blob = await response.blob();
@@ -57,7 +57,6 @@ const uploadPhoto = async (uri: string): Promise<string | null> => {
       return (json as { data?: { url?: string } })?.data?.url ?? null;
     }
 
-    // For native platforms, use the standard RN FormData approach
     const formData = new FormData();
     formData.append("photo", {
       uri,
@@ -119,7 +118,6 @@ export default function Step3Screen() {
     const remaining = 6 - photos.length;
     if (remaining <= 0) return;
 
-    // Sequential permission and launch pattern (P0 Fix)
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       setError("Fotoğraflarına erişmek için galeri izni vermelisin.");
@@ -186,77 +184,25 @@ export default function Step3Screen() {
   };
 
   const slots = Array.from({ length: 6 });
-  const slotSize = (350 - 12) / 3;
+  const slotSize = (350 - 12 - 48) / 3 + 4;
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.background }}
-      contentContainerStyle={{ flexGrow: 1 }}
-      showsVerticalScrollIndicator={false}
-    >
-      <LinearGradient
-        colors={gradients.background}
-        style={{
-          flex: 1,
-          paddingHorizontal: 28,
-          paddingTop: insets.top + 24,
-          paddingBottom: insets.bottom + 40,
-        }}
+    <View style={{ flex: 1, backgroundColor: Colors.bgLight }}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Progress */}
-        <View style={{ flexDirection: "row", gap: 6, marginBottom: 36 }}>
-          {[1, 2, 3, 4].map((step) => (
-            <View
-              key={step}
-              style={{
-                flex: 1,
-                height: 3,
-                borderRadius: 2,
-                backgroundColor:
-                  step <= 3 ? theme.primary : theme.borderDefault,
-              }}
-            />
-          ))}
-        </View>
+        <OnboardingHeader step={3} />
 
-        <Pressable
-          onPress={() => router.back()}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            backgroundColor: theme.surface,
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 24,
-          }}
-        >
-          <ChevronLeft size={24} color={theme.textPrimary} />
-        </Pressable>
-
-        <Text
-          style={{
-            color: theme.textPrimary,
-            fontSize: 28,
-            fontFamily: "Syne_700Bold",
-            marginBottom: 8,
-          }}
-        >
+        <Text style={{ fontFamily: "DMSerifDisplay_400Regular", fontSize: 30, color: Colors.textDark, marginTop: 16 }}>
           Fotoğraflarını ekle
         </Text>
-        <Text style={{ color: theme.textSecondary, fontSize: 15, marginBottom: 28 }}>
+        <Text style={{ fontFamily: "DMSans_400Regular", fontSize: 14, color: Colors.textMuted, lineHeight: 20, marginTop: 6, marginBottom: 24 }}>
           En az 2 fotoğraf gerekli • {photos.length}/6
         </Text>
 
-        {/* Photo grid */}
-        <View
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 12,
-            marginBottom: 24,
-          }}
-        >
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
           {slots.map((_, i) => {
             const photo = photos[i];
             const isNextSlot = i === photos.length;
@@ -266,16 +212,16 @@ export default function Step3Screen() {
                 style={{
                   width: slotSize,
                   height: slotSize * 1.3,
-                  borderRadius: 14,
+                  borderRadius: 18,
                   overflow: "hidden",
-                  backgroundColor: theme.surface,
+                  backgroundColor: Colors.white,
                   borderWidth: 1.5,
                   borderStyle: photo ? "solid" : "dashed",
                   borderColor: photo
-                    ? theme.primary
+                    ? Colors.primary
                     : isNextSlot
-                    ? theme.primary
-                    : theme.borderDefault,
+                    ? Colors.primary
+                    : "rgba(0,0,0,0.1)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -297,11 +243,7 @@ export default function Step3Screen() {
                         justifyContent: "center",
                       }}
                     >
-                      <Text
-                        style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}
-                      >
-                        ×
-                      </Text>
+                      <Ionicons name="close-outline" size={16} color="#fff" />
                     </Pressable>
                     <Image
                       source={{ uri: photo }}
@@ -312,26 +254,14 @@ export default function Step3Screen() {
                 ) : (
                   <Pressable
                     onPress={isNextSlot && !uploading ? handleAddPhoto : undefined}
-                    style={{
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flex: 1,
-                    }}
+                    style={{ alignItems: "center", justifyContent: "center", flex: 1, alignSelf: "stretch" }}
                     testID={isNextSlot ? "add-photo-button" : undefined}
                   >
                     {isNextSlot && uploading ? (
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    ) : (
-                      <Text
-                        style={{
-                          color: isNextSlot ? theme.primary : "#3A3A4A",
-                          fontSize: 28,
-                          fontWeight: "300",
-                        }}
-                      >
-                        {isNextSlot ? "+" : null}
-                      </Text>
-                    )}
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    ) : isNextSlot ? (
+                      <Ionicons name="add-outline" size={32} color={Colors.primary} />
+                    ) : null}
                   </Pressable>
                 )}
               </View>
@@ -340,57 +270,23 @@ export default function Step3Screen() {
         </View>
 
         {uploading ? (
-          <Text
-            style={{
-              color: theme.textSecondary,
-              fontSize: 13,
-              marginBottom: 16,
-              textAlign: "center",
-            }}
-          >
+          <Text style={{ color: Colors.textMuted, fontSize: 13, marginBottom: 12, textAlign: "center", fontFamily: "DMSans_400Regular" }}>
             Fotoğraflar yükleniyor...
           </Text>
         ) : null}
 
         {error ? (
-          <Text
-            style={{
-              color: theme.error,
-              fontSize: 13,
-              marginBottom: 16,
-              textAlign: "center",
-            }}
-          >
+          <Text style={{ color: "#FF3B30", fontSize: 13, marginBottom: 12, textAlign: "center", fontFamily: "DMSans_400Regular" }}>
             {error}
           </Text>
         ) : null}
 
-        <View style={{ flex: 1 }} />
+        <View style={{ flex: 1, minHeight: 24 }} />
 
-        <Pressable
-          onPress={handleNext}
-          testID="next-button"
-          disabled={uploading}
-          style={({ pressed }) => ({
-            opacity: pressed || uploading ? 0.8 : 1,
-          })}
-        >
-          <LinearGradient
-            colors={gradients.button}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{
-              paddingVertical: 18,
-              borderRadius: 14,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "#fff", fontSize: 17, fontWeight: "700" }}>
-              Devam →
-            </Text>
-          </LinearGradient>
-        </Pressable>
-      </LinearGradient>
-    </ScrollView>
+        <View style={{ marginTop: 32 }}>
+          <UMButton variant="primary" label="Devam" disabled={uploading || photos.length < 2} onPress={handleNext} />
+        </View>
+      </ScrollView>
+    </View>
   );
 }

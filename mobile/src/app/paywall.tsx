@@ -1,4 +1,4 @@
-import { useState, useMemo, ReactElement, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,8 +6,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Linking,
+  StatusBar,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -19,31 +21,20 @@ import Animated, {
   withRepeat,
   withSequence,
 } from "react-native-reanimated";
-import { theme } from "@/lib/theme";
+import { Colors, Radius } from "@/lib/theme";
+import { UMCard, UMButton } from "@/components/ui";
 import {
   getOfferings,
   purchasePackage,
   restorePurchases,
   PurchasesPackage,
 } from "@/lib/revenue-cat";
-import {
-  X,
-  Crown,
-  Heart,
-  Eye,
-  Star,
-  RotateCcw,
-  Sparkles,
-  Check,
-  Filter,
-  Zap,
-} from "lucide-react-native";
 
+type IoniconName = keyof typeof Ionicons.glyphMap;
 type TierId = "crush" | "flort" | "ask";
 
-// Package tier definitions
 interface PackageFeature {
-  icon: typeof Heart;
+  icon: IoniconName;
   text: string;
   included: boolean;
 }
@@ -63,7 +54,6 @@ interface PackageTier {
   _rcPackage?: PurchasesPackage;
 }
 
-// Static tier definitions — static prices always shown, RC only used for purchasing
 const TIER_DEFINITIONS: PackageTier[] = [
   {
     id: "crush",
@@ -72,13 +62,13 @@ const TIER_DEFINITIONS: PackageTier[] = [
     price: "Ücretsiz",
     period: "",
     isFree: true,
-    accentColor: "#6B7280",
+    accentColor: Colors.textMuted,
     features: [
-      { icon: Heart, text: "Günlük 5 beğeni hakkı", included: true },
-      { icon: RotateCcw, text: "Geri alma yok", included: false },
-      { icon: Eye, text: "Seni beğenenleri gör", included: false },
-      { icon: Star, text: "Süper beğeni (günlük 1)", included: true },
-      { icon: Filter, text: "Gelişmiş filtreler", included: false },
+      { icon: "heart-outline", text: "Günlük 5 beğeni hakkı", included: true },
+      { icon: "refresh-outline", text: "Geri alma yok", included: false },
+      { icon: "eye-outline", text: "Seni beğenenleri gör", included: false },
+      { icon: "star-outline", text: "Süper beğeni (günlük 1)", included: true },
+      { icon: "options-outline", text: "Gelişmiş filtreler", included: false },
     ],
   },
   {
@@ -88,13 +78,13 @@ const TIER_DEFINITIONS: PackageTier[] = [
     price: "₺119,99",
     period: "/ay",
     isRecommended: true,
-    accentColor: "#D4537E",
+    accentColor: Colors.primary,
     features: [
-      { icon: Heart, text: "Günlük 30 beğeni hakkı", included: true },
-      { icon: RotateCcw, text: "Son beğeniyi geri al", included: true },
-      { icon: Eye, text: "Seni beğenenleri gör", included: true },
-      { icon: Star, text: "Günlük 3 süper beğeni", included: true },
-      { icon: Filter, text: "Gelişmiş filtreler", included: true },
+      { icon: "heart-outline", text: "Günlük 30 beğeni hakkı", included: true },
+      { icon: "refresh-outline", text: "Son beğeniyi geri al", included: true },
+      { icon: "eye-outline", text: "Seni beğenenleri gör", included: true },
+      { icon: "star-outline", text: "Günlük 3 süper beğeni", included: true },
+      { icon: "options-outline", text: "Gelişmiş filtreler", included: true },
     ],
   },
   {
@@ -105,13 +95,13 @@ const TIER_DEFINITIONS: PackageTier[] = [
     period: "/ay",
     perMonthHint: "Yıllık ödenir · ₺899,99/yıl",
     savings: "%37 tasarruf",
-    accentColor: "#FFD700",
+    accentColor: "#D4AC0D",
     features: [
-      { icon: Heart, text: "Sınırsız beğeni", included: true },
-      { icon: RotateCcw, text: "Sınırsız geri alma", included: true },
-      { icon: Eye, text: "Seni beğenenleri gör", included: true },
-      { icon: Star, text: "Günlük 5 süper beğeni", included: true },
-      { icon: Filter, text: "Gelişmiş filtreler + Okundu bilgisi", included: true },
+      { icon: "heart-outline", text: "Sınırsız beğeni", included: true },
+      { icon: "refresh-outline", text: "Sınırsız geri alma", included: true },
+      { icon: "eye-outline", text: "Seni beğenenleri gör", included: true },
+      { icon: "star-outline", text: "Günlük 5 süper beğeni", included: true },
+      { icon: "options-outline", text: "Gelişmiş filtreler + Okundu bilgisi", included: true },
     ],
   },
 ];
@@ -135,51 +125,28 @@ const BOOST_PACKAGES: AddonPackage[] = [
   { id: "boost_3", label: "3 Boost", price: "₺109,99", storeId: "unimatch_boost_3", badge: "Fırsat" },
 ];
 
-// Feature row component for package cards
-function FeatureRow({
-  feature,
-  accentColor,
-}: {
-  feature: PackageFeature;
-  accentColor: string;
-}) {
-  const IconComponent = feature.icon;
-  const iconColor = feature.included ? accentColor : theme.textPlaceholder;
-
+function FeatureRow({ feature, accentColor }: { feature: PackageFeature; accentColor: string }) {
+  const iconColor = feature.included ? accentColor : "#C4A8B4";
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 8,
-      }}
-    >
-      <View
-        style={{
-          width: 28,
-          height: 28,
-          alignItems: "center",
-          justifyContent: "center",
-          marginRight: 12,
-        }}
-      >
-        <IconComponent size={18} color={iconColor} />
+    <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 6 }}>
+      <View style={{ width: 24, alignItems: "center", justifyContent: "center", marginRight: 10 }}>
+        <Ionicons name={feature.icon} size={16} color={iconColor} />
       </View>
       <Text
         style={{
           flex: 1,
-          color: feature.included ? "#1A0D14" : "#C4A8B4",
+          color: feature.included ? Colors.textDark : "#C4A8B4",
           fontSize: 14,
-          fontFamily: "PlusJakartaSans_400Regular",
+          fontFamily: "DMSans_400Regular",
         }}
       >
         {feature.text}
       </Text>
-      {feature.included ? (
-        <Check size={18} color={theme.success} />
-      ) : (
-        <X size={18} color={theme.textPlaceholder} />
-      )}
+      <Ionicons
+        name={feature.included ? "checkmark-circle" : "close-circle"}
+        size={18}
+        color={feature.included ? "#4CD964" : "#C4A8B4"}
+      />
     </View>
   );
 }
@@ -191,7 +158,7 @@ function AddonCard({
   loading,
 }: {
   addon: AddonPackage;
-  icon: ReactElement;
+  icon: IoniconName;
   onPress: () => void;
   loading: boolean;
 }) {
@@ -204,17 +171,17 @@ function AddonCard({
     >
       <View
         style={{
-          backgroundColor: "#FFFFFF",
-          borderRadius: 16,
-          padding: 12,
+          backgroundColor: Colors.white,
+          borderRadius: Radius.card,
+          padding: 14,
           borderWidth: 1,
-          borderColor: "#F0EAF0",
+          borderColor: "rgba(0,0,0,0.06)",
           alignItems: "center",
-          minWidth: 100,
+          minWidth: 110,
           shadowColor: "#000",
           shadowOpacity: 0.06,
-          shadowRadius: 6,
-          shadowOffset: { width: 0, height: 1 },
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 2 },
           elevation: 2,
         }}
       >
@@ -222,50 +189,40 @@ function AddonCard({
           <View
             style={{
               position: "absolute",
-              top: -9,
-              backgroundColor: theme.primary,
-              borderRadius: 8,
+              top: -10,
+              backgroundColor: Colors.primary,
+              borderRadius: 10,
               paddingHorizontal: 8,
-              paddingVertical: 2,
+              paddingVertical: 3,
             }}
           >
-            <Text
-              style={{
-                color: "#FFFFFF",
-                fontSize: 10,
-                fontFamily: "PlusJakartaSans_600SemiBold",
-              }}
-            >
+            <Text style={{ color: "#fff", fontSize: 10, fontFamily: "DMSans_700Bold" }}>
               {addon.badge}
             </Text>
           </View>
         ) : null}
 
-        {loading ? (
-          <ActivityIndicator color={theme.primary} size="small" />
-        ) : (
-          icon
-        )}
-
-        <Text
+        <View
           style={{
-            color: "#1A0D14",
-            fontSize: 13,
-            fontFamily: "PlusJakartaSans_600SemiBold",
-            marginTop: 8,
-            textAlign: "center",
-          }}
-        >
-          {addon.label}
-        </Text>
-        <Text
-          style={{
-            color: "#8A6F78",
-            fontSize: 12,
-            fontFamily: "PlusJakartaSans_400Regular",
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: Colors.primaryPale,
+            alignItems: "center",
+            justifyContent: "center",
             marginTop: 4,
           }}
         >
+          {loading ? (
+            <ActivityIndicator color={Colors.primary} size="small" />
+          ) : (
+            <Ionicons name={icon} size={20} color={Colors.primary} />
+          )}
+        </View>
+        <Text style={{ color: Colors.textDark, fontSize: 13, fontFamily: "DMSans_600SemiBold", marginTop: 8, textAlign: "center" }}>
+          {addon.label}
+        </Text>
+        <Text style={{ color: Colors.textMuted, fontSize: 12, fontFamily: "DMSans_400Regular", marginTop: 4 }}>
           {addon.price}
         </Text>
       </View>
@@ -273,18 +230,17 @@ function AddonCard({
   );
 }
 
-function getPackageIcon(pkg: PackageTier) {
+function getPackageIcon(pkg: PackageTier): IoniconName {
   switch (pkg.id) {
     case "ask":
-      return <Crown size={24} color={pkg.accentColor} />;
+      return "diamond-outline";
     case "flort":
-      return <Heart size={24} color={pkg.accentColor} />;
+      return "heart-outline";
     default:
-      return <Star size={24} color={pkg.accentColor} />;
+      return "star-outline";
   }
 }
 
-// Package card component
 function PackageCard({
   pkg,
   onSelect,
@@ -297,7 +253,6 @@ function PackageCard({
   const isSelected = selectedId === pkg.id;
   const isRecommended = pkg.isRecommended;
 
-  // Glow animation when selected
   const glowRadius = useSharedValue(isSelected ? 16 : 6);
   const glowOpacity = useSharedValue(isSelected ? 0.35 : 0.06);
   const pulse = useSharedValue(1);
@@ -321,10 +276,10 @@ function PackageCard({
     shadowRadius: glowRadius.value,
   }));
 
-  const accentGlow = pkg.accentColor ?? theme.primary;
+  const accentGlow = pkg.accentColor;
 
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 14 }}>
       <Pressable
         testID={`package-card-${pkg.id}`}
         onPress={() => {
@@ -339,11 +294,11 @@ function PackageCard({
         <Animated.View
           style={[
             {
-              backgroundColor: isRecommended ? "#FFF0F3" : "#FFFFFF",
-              borderRadius: 20,
+              backgroundColor: isRecommended ? Colors.primaryPale : Colors.white,
+              borderRadius: Radius.card,
               overflow: "hidden",
               borderWidth: isSelected ? 2 : isRecommended ? 2 : 1,
-              borderColor: isSelected ? accentGlow : isRecommended ? "#E8436A" : "#F0EAF0",
+              borderColor: isSelected ? accentGlow : isRecommended ? Colors.primary : "rgba(0,0,0,0.06)",
               shadowColor: isSelected ? accentGlow : "#000",
               shadowOffset: { width: 0, height: 2 },
               elevation: isSelected ? 8 : 2,
@@ -351,10 +306,9 @@ function PackageCard({
             glowStyle,
           ]}
         >
-          {/* Recommended badge */}
           {isRecommended ? (
             <LinearGradient
-              colors={[theme.primary, "#FF5E73"]}
+              colors={[Colors.primary, Colors.primaryLight]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{
@@ -363,76 +317,42 @@ function PackageCard({
                 alignItems: "center",
                 flexDirection: "row",
                 justifyContent: "center",
+                gap: 6,
               }}
             >
-              <Sparkles size={14} color="#FFFFFF" />
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontSize: 12,
-                  fontWeight: "700",
-                  marginLeft: 6,
-                  letterSpacing: 1,
-                }}
-              >
-                ONERILEN
+              <Ionicons name="sparkles-outline" size={14} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 12, fontFamily: "DMSans_700Bold", letterSpacing: 1 }}>
+                ÖNERİLEN
               </Text>
             </LinearGradient>
           ) : null}
 
-          <View style={{ padding: 20 }}>
-            {/* Header with icon and price */}
+          <View style={{ padding: 18 }}>
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 16,
+                marginBottom: 14,
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {getPackageIcon(pkg)}
-                <Text
-                  style={{
-                    color: "#1A0D14",
-                    fontSize: 22,
-                    fontFamily: "Syne_700Bold",
-                    marginLeft: 10,
-                  }}
-                >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Ionicons name={getPackageIcon(pkg)} size={22} color={pkg.accentColor} />
+                <Text style={{ color: Colors.textDark, fontSize: 22, fontFamily: "DMSans_700Bold" }}>
                   {pkg.name}
                 </Text>
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 {pkg.isFree ? (
-                  <Text
-                    style={{
-                      color: "#8A6F78",
-                      fontSize: 16,
-                      fontFamily: "PlusJakartaSans_600SemiBold",
-                    }}
-                  >
+                  <Text style={{ color: Colors.textMuted, fontSize: 16, fontFamily: "DMSans_600SemiBold" }}>
                     {pkg.price}
                   </Text>
                 ) : (
                   <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-                    <Text
-                      style={{
-                        color: pkg.accentColor,
-                        fontSize: 24,
-                        fontFamily: "Syne_700Bold",
-                      }}
-                    >
+                    <Text style={{ color: pkg.accentColor, fontSize: 24, fontFamily: "DMSans_700Bold" }}>
                       {pkg.price}
                     </Text>
-                    <Text
-                      style={{
-                        color: theme.textSecondary,
-                        fontSize: 14,
-                        fontFamily: "PlusJakartaSans_400Regular",
-                        marginLeft: 2,
-                      }}
-                    >
+                    <Text style={{ color: Colors.textMuted, fontSize: 14, fontFamily: "DMSans_400Regular", marginLeft: 2 }}>
                       {pkg.period}
                     </Text>
                   </View>
@@ -440,48 +360,23 @@ function PackageCard({
               </View>
             </View>
 
-            {/* Divider */}
-            <View
-              style={{
-                height: 1,
-                backgroundColor: "#F0EAF0",
-                marginBottom: 12,
-              }}
-            />
+            <View style={{ height: 1, backgroundColor: "rgba(0,0,0,0.06)", marginBottom: 8 }} />
 
-            {/* Features list */}
             <View>
               {pkg.features.map((feature, idx) => (
-                <FeatureRow
-                  key={idx}
-                  feature={feature}
-                  accentColor={pkg.accentColor}
-                />
+                <FeatureRow key={idx} feature={feature} accentColor={pkg.accentColor} />
               ))}
             </View>
 
             {!pkg.isFree && (pkg.perMonthHint || pkg.savings) ? (
-              <View style={{ marginTop: 12 }}>
+              <View style={{ marginTop: 10 }}>
                 {pkg.perMonthHint ? (
-                  <Text
-                    style={{
-                      color: "#8A6F78",
-                      fontSize: 12,
-                      fontFamily: "PlusJakartaSans_400Regular",
-                    }}
-                  >
+                  <Text style={{ color: Colors.textMuted, fontSize: 12, fontFamily: "DMSans_400Regular" }}>
                     {pkg.perMonthHint}
                   </Text>
                 ) : null}
                 {pkg.savings ? (
-                  <Text
-                    style={{
-                      color: theme.success,
-                      fontSize: 12,
-                      marginTop: 2,
-                      fontFamily: "PlusJakartaSans_600SemiBold",
-                    }}
-                  >
+                  <Text style={{ color: "#4CD964", fontSize: 12, marginTop: 2, fontFamily: "DMSans_600SemiBold" }}>
                     {pkg.savings}
                   </Text>
                 ) : null}
@@ -500,13 +395,11 @@ export default function PaywallScreen() {
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const [purchasingAddonId, setPurchasingAddonId] = useState<string | null>(null);
 
-  // Fetch live offerings from RevenueCat
-  const { data: rcPackages, isLoading: loadingOfferings } = useQuery({
+  const { data: rcPackages } = useQuery({
     queryKey: ["revenuecat-offerings"],
     queryFn: getOfferings,
   });
 
-  // Build display tiers — static prices always shown, RC package only attached for purchasing
   const packages: PackageTier[] = useMemo(
     () =>
       TIER_DEFINITIONS.map((tier) => {
@@ -514,13 +407,11 @@ export default function PaywallScreen() {
         const rcPkg = rcPackages?.find(
           (p: PurchasesPackage) => p.product.identifier === tier.storeIdentifier
         );
-        // Only attach RC package for purchasing — don't override static prices
         return rcPkg ? { ...tier, _rcPackage: rcPkg } : tier;
       }),
     [rcPackages]
   );
 
-  // Purchase mutation
   const purchaseMutation = useMutation({
     mutationFn: (pkg: PurchasesPackage) => purchasePackage(pkg),
     onSuccess: (customerInfo) => {
@@ -531,11 +422,10 @@ export default function PaywallScreen() {
     },
     onError: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setPurchaseError("Satin alma basarisiz oldu. Lutfen tekrar deneyin.");
+      setPurchaseError("Satın alma başarısız oldu. Lütfen tekrar deneyin.");
     },
   });
 
-  // Restore purchases mutation
   const restoreMutation = useMutation({
     mutationFn: restorePurchases,
     onSuccess: (isPremium) => {
@@ -544,12 +434,12 @@ export default function PaywallScreen() {
         router.back();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        setPurchaseError("Geri yuklenecek satin alma bulunamadi.");
+        setPurchaseError("Geri yüklenecek satın alma bulunamadı.");
       }
     },
     onError: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setPurchaseError("Geri yukleme basarisiz oldu.");
+      setPurchaseError("Geri yükleme başarısız oldu.");
     },
   });
 
@@ -561,7 +451,7 @@ export default function PaywallScreen() {
     },
     onError: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setPurchaseError("Satin alma basarisiz oldu. Lutfen tekrar deneyin.");
+      setPurchaseError("Satın alma başarısız oldu. Lütfen tekrar deneyin.");
       setPurchasingAddonId(null);
     },
   });
@@ -571,7 +461,7 @@ export default function PaywallScreen() {
       (p: PurchasesPackage) => p.product.identifier === addon.storeId
     );
     if (!rcPkg) {
-      setPurchaseError("Bu paket su an mevcut degil.");
+      setPurchaseError("Bu paket şu an mevcut değil.");
       return;
     }
     setPurchaseError(null);
@@ -590,18 +480,16 @@ export default function PaywallScreen() {
 
   const handleContinue = () => {
     if (!selectedTier) return;
-
     if (selectedTier.isFree) {
       router.back();
       return;
     }
-
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const rcPkg = selectedTier._rcPackage;
     if (rcPkg) {
       purchaseMutation.mutate(rcPkg);
     } else {
-      setPurchaseError("Bu paket su an mevcut degil. Lutfen daha sonra tekrar deneyin.");
+      setPurchaseError("Bu paket şu an mevcut değil. Lütfen daha sonra tekrar deneyin.");
     }
   };
 
@@ -614,8 +502,8 @@ export default function PaywallScreen() {
   const isPurchasing = purchaseMutation.isPending;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8F4F6" }}>
-      {/* Close button */}
+    <View style={{ flex: 1, backgroundColor: Colors.bgLight }}>
+      <StatusBar barStyle="dark-content" />
       <Pressable
         onPress={() => router.back()}
         testID="close-paywall"
@@ -627,7 +515,7 @@ export default function PaywallScreen() {
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: Colors.white,
           alignItems: "center",
           justifyContent: "center",
           shadowColor: "#000",
@@ -637,17 +525,17 @@ export default function PaywallScreen() {
           elevation: 2,
         }}
       >
-        <X size={20} color="#1A0D14" />
+        <Ionicons name="close-outline" size={20} color={Colors.textDark} />
       </Pressable>
 
       <Text
         style={{
-          color: "#8A6F78",
+          color: Colors.textMuted,
           fontSize: 12,
           textAlign: "center",
           marginTop: insets.top + 18,
           marginHorizontal: 20,
-          fontFamily: "PlusJakartaSans_400Regular",
+          fontFamily: "DMSans_400Regular",
         }}
       >
         İstediğin zaman iptal edebilirsin
@@ -655,185 +543,83 @@ export default function PaywallScreen() {
 
       <ScrollView
         contentContainerStyle={{
-          paddingTop: 12,
-          paddingBottom: insets.bottom + 40,
+          paddingTop: 14,
+          paddingBottom: insets.bottom + 32,
           paddingHorizontal: 20,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={{ alignItems: "center", marginBottom: 28 }}>
+        <View style={{ alignItems: "center", marginBottom: 24 }}>
           <View
             style={{
               width: 72,
               height: 72,
               borderRadius: 36,
-              backgroundColor: "#FFF0F3",
+              backgroundColor: Colors.primaryPale,
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 16,
-              shadowColor: "#E8436A",
+              shadowColor: Colors.primary,
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.2,
+              shadowOpacity: 0.25,
               shadowRadius: 16,
             }}
           >
-            <Crown size={36} color={theme.primary} />
+            <Ionicons name="sparkles-outline" size={36} color={Colors.primary} />
           </View>
-          <Text
-            style={{
-              color: theme.textPrimary,
-              fontSize: 26,
-              fontFamily: "Syne_700Bold",
-              textAlign: "center",
-              marginBottom: 8,
-            }}
-          >
-            Premium'a Yukselt
+          <Text style={{ color: Colors.textDark, fontSize: 32, fontFamily: "DMSerifDisplay_400Regular", textAlign: "center", marginBottom: 6 }}>
+            Premium'a Yükselt
           </Text>
-          <Text
-            style={{
-              color: theme.textSecondary,
-              fontSize: 15,
-              textAlign: "center",
-              lineHeight: 22,
-              fontFamily: "PlusJakartaSans_400Regular",
-            }}
-          >
-            Daha fazla eslesme icin premium ozelliklerin keyfini cikar
+          <Text style={{ color: Colors.textMuted, fontSize: 15, textAlign: "center", lineHeight: 22, fontFamily: "DMSans_400Regular" }}>
+            Daha fazla eşleşme için premium özelliklerin keyfini çıkar
           </Text>
         </View>
 
-        {/* Package cards — always shown with static prices */}
         {packages.map((pkg) => (
-          <PackageCard
-            key={pkg.id}
-            pkg={pkg}
-            onSelect={handleSelectPackage}
-            selectedId={selectedId}
-          />
+          <PackageCard key={pkg.id} pkg={pkg} onSelect={handleSelectPackage} selectedId={selectedId} />
         ))}
 
-        <Pressable
-          onPress={handleContinue}
-          disabled={isPurchasing}
-          testID="paywall-continue-button"
-          style={({ pressed }) => ({
-            opacity: pressed || isPurchasing ? 0.8 : 1,
-            marginTop: 8,
-            marginBottom: 12,
-          })}
-        >
-          <LinearGradient
-            colors={[theme.primary, "#FF5E73"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{
-              paddingVertical: 14,
-              borderRadius: 12,
-              alignItems: "center",
-            }}
-          >
-            {isPurchasing ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontSize: 16,
-                  fontFamily: "PlusJakartaSans_600SemiBold",
-                }}
-              >
-                {selectedTier?.isFree
-                  ? "Ücretsiz devam et"
-                  : `Şimdi başla · ${selectedTier.price}${selectedTier.period}`}
-              </Text>
-            )}
-          </LinearGradient>
-        </Pressable>
+        <View style={{ marginTop: 8, marginBottom: 12 }}>
+          <UMButton
+            variant="primary"
+            label={
+              selectedTier?.isFree
+                ? "Ücretsiz devam et"
+                : `Şimdi başla · ${selectedTier.price}${selectedTier.period}`
+            }
+            loading={isPurchasing}
+            onPress={handleContinue}
+          />
+        </View>
 
-        {/* Error message */}
         {purchaseError !== null ? (
           <View
             style={{
-              backgroundColor: "#FFF0F0",
-              borderRadius: 12,
+              backgroundColor: "#FFEAEA",
+              borderRadius: Radius.card,
               padding: 12,
-              marginBottom: 16,
+              marginBottom: 12,
             }}
             testID="purchase-error"
           >
-            <Text
-              style={{
-                color: theme.error ?? "#EF4444",
-                fontSize: 14,
-                textAlign: "center",
-                fontFamily: "PlusJakartaSans_400Regular",
-              }}
-            >
+            <Text style={{ color: "#FF3B30", fontSize: 14, textAlign: "center", fontFamily: "DMSans_400Regular" }}>
               {purchaseError}
             </Text>
           </View>
         ) : null}
 
-        {/* À la carte section */}
-        <View
-          style={{
-            marginTop: 8,
-            marginBottom: 8,
-            paddingTop: 20,
-            borderTopWidth: 1,
-            borderTopColor: "#F0EAF0",
-          }}
-        >
-          {/* Section header */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 18,
-            }}
-          >
-            <Sparkles size={18} color={theme.primary} />
-            <Text
-              style={{
-                color: theme.textPrimary,
-                fontSize: 16,
-                fontFamily: "Syne_700Bold",
-              }}
-            >
+        <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.06)" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <Ionicons name="sparkles-outline" size={18} color={Colors.primary} />
+            <Text style={{ color: Colors.textDark, fontSize: 18, fontFamily: "DMSans_700Bold" }}>
               Tek seferlik ekstralar
             </Text>
           </View>
 
-          {/* Boost subsection */}
-          <View
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 16,
-              padding: 16,
-              marginBottom: 12,
-              shadowColor: "#000",
-              shadowOpacity: 0.05,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 1 },
-              elevation: 1,
-              borderWidth: 1,
-              borderColor: "#F0EAF0",
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
-              <Zap size={15} color="#E8436A" />
-              <Text
-                style={{
-                  color: theme.textPrimary,
-                  fontSize: 14,
-                  fontFamily: "PlusJakartaSans_600SemiBold",
-                }}
-              >
-                Boost
-              </Text>
+          <UMCard style={{ marginBottom: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <Ionicons name="flash-outline" size={16} color={Colors.primary} />
+              <Text style={{ color: Colors.textDark, fontSize: 16, fontFamily: "DMSans_600SemiBold" }}>Boost</Text>
             </View>
             <ScrollView
               horizontal
@@ -845,41 +631,18 @@ export default function PaywallScreen() {
                 <AddonCard
                   key={addon.id}
                   addon={addon}
-                  icon={<Zap size={20} color="#E8436A" />}
+                  icon="flash-outline"
                   onPress={() => handlePurchaseAddon(addon)}
                   loading={purchasingAddonId === addon.id}
                 />
               ))}
             </ScrollView>
-          </View>
+          </UMCard>
 
-          {/* Super Like subsection */}
-          <View
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 16,
-              padding: 16,
-              marginBottom: 4,
-              shadowColor: "#000",
-              shadowOpacity: 0.05,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 1 },
-              elevation: 1,
-              borderWidth: 1,
-              borderColor: "#F0EAF0",
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
-              <Star size={15} color="#FFD700" />
-              <Text
-                style={{
-                  color: theme.textPrimary,
-                  fontSize: 14,
-                  fontFamily: "PlusJakartaSans_600SemiBold",
-                }}
-              >
-                Süper Beğeni
-              </Text>
+          <UMCard style={{ marginBottom: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <Ionicons name="star" size={16} color={Colors.primary} />
+              <Text style={{ color: Colors.textDark, fontSize: 16, fontFamily: "DMSans_600SemiBold" }}>Süper Beğeni</Text>
             </View>
             <ScrollView
               horizontal
@@ -891,16 +654,15 @@ export default function PaywallScreen() {
                 <AddonCard
                   key={addon.id}
                   addon={addon}
-                  icon={<Star size={20} color="#FFD700" />}
+                  icon="star"
                   onPress={() => handlePurchaseAddon(addon)}
                   loading={purchasingAddonId === addon.id}
                 />
               ))}
             </ScrollView>
-          </View>
+          </UMCard>
         </View>
 
-        {/* Restore purchases */}
         <Pressable
           onPress={handleRestore}
           disabled={restoreMutation.isPending}
@@ -908,85 +670,35 @@ export default function PaywallScreen() {
           style={({ pressed }) => ({
             alignItems: "center",
             opacity: pressed || restoreMutation.isPending ? 0.7 : 1,
-            paddingVertical: 12,
-            marginTop: 4,
+            paddingVertical: 14,
+            marginTop: 8,
           })}
         >
           {restoreMutation.isPending ? (
-            <ActivityIndicator color={theme.textSecondary} size="small" />
+            <ActivityIndicator color={Colors.textMuted} size="small" />
           ) : (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <RotateCcw size={16} color={theme.textSecondary} />
-              <Text
-                style={{
-                  color: theme.textSecondary,
-                  fontSize: 14,
-                  fontFamily: "PlusJakartaSans_400Regular",
-                }}
-              >
-                Satin almalari geri yukle
+              <Ionicons name="refresh-outline" size={16} color={Colors.textMuted} />
+              <Text style={{ color: Colors.textMuted, fontSize: 13, fontFamily: "DMSans_400Regular" }}>
+                Satın almaları geri yükle
               </Text>
             </View>
           )}
         </Pressable>
 
-        {/* App Store compliance terms */}
-        <View
-          style={{
-            marginTop: 12,
-            paddingTop: 16,
-            borderTopWidth: 1,
-            borderTopColor: "#F0EAF0",
-          }}
-        >
-          <Text
-            style={{
-              color: theme.textPlaceholder,
-              fontSize: 11,
-              textAlign: "center",
-              marginTop: 8,
-              lineHeight: 16,
-              fontFamily: "PlusJakartaSans_400Regular",
-            }}
-          >
-            Abonelik otomatik olarak yenilenir. Mevcut donem bitmeden en az 24 saat once iptal etmezseniz otomatik olarak yenilenir. Odeme Apple ID hesabinizdan alinir.
+        <View style={{ marginTop: 12, paddingTop: 16, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.06)" }}>
+          <Text style={{ color: Colors.textMuted, fontSize: 11, textAlign: "center", marginTop: 4, lineHeight: 16, fontFamily: "DMSans_400Regular" }}>
+            Abonelik otomatik olarak yenilenir. Mevcut dönem bitmeden en az 24 saat önce iptal etmezseniz otomatik olarak yenilenir. Ödeme Apple ID hesabınızdan alınır.
           </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: 16,
-              marginTop: 10,
-            }}
-          >
-            <Pressable
-              onPress={() => Linking.openURL("https://example.com/terms")}
-              testID="terms-link"
-            >
-              <Text
-                style={{
-                  color: theme.primary,
-                  fontSize: 12,
-                  textDecorationLine: "underline",
-                  fontFamily: "PlusJakartaSans_400Regular",
-                }}
-              >
-                Kullanim Kosullari
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 10 }}>
+            <Pressable onPress={() => Linking.openURL("https://example.com/terms")} testID="terms-link">
+              <Text style={{ color: Colors.primary, fontSize: 12, textDecorationLine: "underline", fontFamily: "DMSans_400Regular" }}>
+                Kullanım Koşulları
               </Text>
             </Pressable>
-            <Pressable
-              onPress={() => Linking.openURL("https://example.com/privacy")}
-              testID="privacy-link"
-            >
-              <Text
-                style={{
-                  color: theme.primary,
-                  fontSize: 12,
-                  textDecorationLine: "underline",
-                  fontFamily: "PlusJakartaSans_400Regular",
-                }}
-              >
-                Gizlilik Politikasi
+            <Pressable onPress={() => Linking.openURL("https://example.com/privacy")} testID="privacy-link">
+              <Text style={{ color: Colors.primary, fontSize: 12, textDecorationLine: "underline", fontFamily: "DMSans_400Regular" }}>
+                Gizlilik Politikası
               </Text>
             </Pressable>
           </View>

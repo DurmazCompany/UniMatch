@@ -8,43 +8,46 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  StatusBar,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { theme, gradients } from "@/lib/theme";
-import { ChevronLeft, Check, Music, Dribbble, Gamepad2, Film, BookOpen, Plane, Camera, UtensilsCrossed, Palette, Dumbbell, Code, PersonStanding, Coffee, TreePine, Music2, Heart, Globe, ShoppingBag, Star, Mic, Tv, Hash, Mic2 } from "lucide-react-native";
+import { Colors, Radius } from "@/lib/theme";
+import { UMCard, UMButton } from "@/components/ui";
 import { api } from "@/lib/api/api";
 import { Profile } from "@/lib/types";
 
-const HOBBIES = [
-  { value: "music", label: "Muzik", icon: Music },
-  { value: "sports", label: "Spor", icon: Dribbble },
-  { value: "gaming", label: "Oyun", icon: Gamepad2 },
-  { value: "movies", label: "Film/Dizi", icon: Film },
-  { value: "reading", label: "Kitap", icon: BookOpen },
-  { value: "travel", label: "Seyahat", icon: Plane },
-  { value: "photography", label: "Fotograf", icon: Camera },
-  { value: "cooking", label: "Yemek", icon: UtensilsCrossed },
-  { value: "art", label: "Sanat", icon: Palette },
-  { value: "fitness", label: "Fitness", icon: Dumbbell },
-  { value: "coding", label: "Kodlama", icon: Code },
-  { value: "dance", label: "Dans", icon: PersonStanding },
-  { value: "cafe", label: "Kafe Takilma", icon: Coffee },
-  { value: "yoga", label: "Yoga", icon: PersonStanding },
-  { value: "hiking", label: "Doga Yuruyusu", icon: TreePine },
-  { value: "concerts", label: "Konser", icon: Music2 },
-  { value: "volunteering", label: "Gonulluluk", icon: Heart },
-  { value: "languages", label: "Yabanci Dil", icon: Globe },
-  { value: "fashion", label: "Moda", icon: ShoppingBag },
-  { value: "astrology", label: "Astroloji", icon: Star },
-  { value: "podcast", label: "Podcast", icon: Mic },
-  { value: "anime", label: "Anime/Manga", icon: Tv },
-  { value: "board_games", label: "Kutu Oyunlari", icon: Hash },
-  { value: "theater", label: "Tiyatro/Sanat", icon: Mic2 },
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+const HOBBIES: { value: string; label: string; icon: IoniconName }[] = [
+  { value: "music", label: "Müzik", icon: "musical-notes-outline" },
+  { value: "sports", label: "Spor", icon: "football-outline" },
+  { value: "gaming", label: "Oyun", icon: "game-controller-outline" },
+  { value: "movies", label: "Film/Dizi", icon: "film-outline" },
+  { value: "reading", label: "Kitap", icon: "book-outline" },
+  { value: "travel", label: "Seyahat", icon: "airplane-outline" },
+  { value: "photography", label: "Fotoğraf", icon: "camera-outline" },
+  { value: "cooking", label: "Yemek", icon: "restaurant-outline" },
+  { value: "art", label: "Sanat", icon: "color-palette-outline" },
+  { value: "fitness", label: "Fitness", icon: "barbell-outline" },
+  { value: "coding", label: "Kodlama", icon: "code-slash-outline" },
+  { value: "dance", label: "Dans", icon: "body-outline" },
+  { value: "cafe", label: "Kafe Takılma", icon: "cafe-outline" },
+  { value: "yoga", label: "Yoga", icon: "leaf-outline" },
+  { value: "hiking", label: "Doğa Yürüyüşü", icon: "trail-sign-outline" },
+  { value: "concerts", label: "Konser", icon: "musical-note" },
+  { value: "volunteering", label: "Gönüllülük", icon: "heart-outline" },
+  { value: "languages", label: "Yabancı Dil", icon: "globe-outline" },
+  { value: "fashion", label: "Moda", icon: "bag-outline" },
+  { value: "astrology", label: "Astroloji", icon: "star-outline" },
+  { value: "podcast", label: "Podcast", icon: "mic-outline" },
+  { value: "anime", label: "Anime/Manga", icon: "tv-outline" },
+  { value: "board_games", label: "Kutu Oyunları", icon: "dice-outline" },
+  { value: "theater", label: "Tiyatro/Sanat", icon: "ticket-outline" },
 ];
 
 const BIO_MAX_LENGTH = 200;
@@ -53,14 +56,11 @@ export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
 
-  // Form state
   const [bio, setBio] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
-  const [showPicker, setShowPicker] = useState(false);
   const [error, setError] = useState("");
 
-  // Fetch current profile
   const { data: profile, isLoading: profileLoading } = useQuery<Profile | null>({
     queryKey: ["my-profile"],
     queryFn: async () => {
@@ -73,7 +73,6 @@ export default function EditProfileScreen() {
     },
   });
 
-  // Initialize form with profile data
   useEffect(() => {
     if (profile) {
       setBio(profile.bio ?? "");
@@ -82,10 +81,8 @@ export default function EditProfileScreen() {
     }
   }, [profile]);
 
-  // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Upload any local (file://) photos first, then save with remote URLs
       const uploadedPhotos: string[] = [];
       for (const photo of photos) {
         if (photo.startsWith("file://") || photo.startsWith("ph://") || !photo.startsWith("http")) {
@@ -104,10 +101,10 @@ export default function EditProfileScreen() {
             if (data?.data?.url) {
               uploadedPhotos.push(data.data.url);
             } else {
-              uploadedPhotos.push(photo); // fallback
+              uploadedPhotos.push(photo);
             }
           } catch {
-            uploadedPhotos.push(photo); // fallback
+            uploadedPhotos.push(photo);
           }
         } else {
           uploadedPhotos.push(photo);
@@ -126,14 +123,12 @@ export default function EditProfileScreen() {
       router.back();
     },
     onError: () => {
-      setError("Profil kaydedilemedi. Lutfen tekrar dene.");
+      setError("Profil kaydedilemedi. Lütfen tekrar dene.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     },
   });
 
-  // Photo handlers
   const pickFromGallery = async () => {
-    setShowPicker(false);
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -148,10 +143,9 @@ export default function EditProfileScreen() {
   };
 
   const takePhoto = async () => {
-    setShowPicker(false);
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Izin gerekli", "Fotograf cekmek icin kamera izni gerekli");
+      Alert.alert("İzin gerekli", "Fotoğraf çekmek için kamera izni gerekli");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -168,7 +162,15 @@ export default function EditProfileScreen() {
 
   const handleAddPhoto = () => {
     if (photos.length >= 6) return;
-    setShowPicker(true);
+    Alert.alert(
+      "Fotoğraf Ekle",
+      "Fotoğrafı nereden seçmek istersin?",
+      [
+        { text: "İptal", style: "cancel" },
+        { text: "Kamera", onPress: takePhoto },
+        { text: "Galeri", onPress: pickFromGallery },
+      ]
+    );
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -176,7 +178,6 @@ export default function EditProfileScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  // Hobby handlers
   const toggleHobby = (value: string) => {
     setError("");
     if (selectedHobbies.includes(value)) {
@@ -187,14 +188,13 @@ export default function EditProfileScreen() {
     }
   };
 
-  // Validation and save
   const handleSave = () => {
     if (photos.length < 2) {
-      setError("En az 2 fotograf gerekli");
+      setError("En az 2 fotoğraf gerekli");
       return;
     }
     if (selectedHobbies.length < 1) {
-      setError("En az 1 hobi sec");
+      setError("En az 1 hobi seç");
       return;
     }
     saveMutation.mutate();
@@ -203,10 +203,10 @@ export default function EditProfileScreen() {
   if (profileLoading || !profile) {
     return (
       <View
-        style={{ flex: 1, backgroundColor: theme.background, alignItems: "center", justifyContent: "center" }}
+        style={{ flex: 1, backgroundColor: Colors.bgLight, alignItems: "center", justifyContent: "center" }}
         testID="edit-profile-loading"
       >
-        <ActivityIndicator color={theme.primary} size="large" />
+        <ActivityIndicator color={Colors.primary} size="large" />
       </View>
     );
   }
@@ -214,24 +214,18 @@ export default function EditProfileScreen() {
   const slots = Array.from({ length: 6 });
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }} testID="edit-profile-screen">
-      <LinearGradient
-        colors={gradients.background}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 200 }}
-      />
-
+    <View style={{ flex: 1, backgroundColor: Colors.bgLight }} testID="edit-profile-screen">
+      <StatusBar barStyle="dark-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100, paddingHorizontal: 20 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
             paddingTop: insets.top + 12,
-            paddingHorizontal: 20,
             paddingBottom: 20,
             gap: 14,
           }}
@@ -242,302 +236,176 @@ export default function EditProfileScreen() {
             style={{
               width: 44,
               height: 44,
-              borderRadius: 12,
-              backgroundColor: theme.surface,
+              borderRadius: 22,
+              backgroundColor: Colors.white,
               alignItems: "center",
               justifyContent: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 6,
+              elevation: 2,
             }}
           >
-            <ChevronLeft size={24} color={theme.textPrimary} />
+            <Ionicons name="chevron-back-outline" size={24} color={Colors.textDark} />
           </Pressable>
-          <Text style={{ color: theme.textPrimary, fontSize: 24, fontFamily: "Syne_700Bold", flex: 1 }}>
-            Profili Duzenle
+          <Text style={{ color: Colors.textDark, fontSize: 24, fontFamily: "DMSans_700Bold", flex: 1 }}>
+            Profili Düzenle
           </Text>
         </View>
 
-        <View style={{ paddingHorizontal: 20 }}>
-          {/* Bio Section */}
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 14,
-              padding: 18,
-              marginBottom: 20,
-              borderWidth: 1,
-              borderColor: theme.borderDefault,
-            }}
-          >
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
-              <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700" }}>Hakkinda</Text>
-              <Text style={{ color: theme.textSecondary, fontSize: 13 }}>
-                {bio.length}/{BIO_MAX_LENGTH}
-              </Text>
-            </View>
-            <TextInput
-              testID="bio-input"
-              value={bio}
-              onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}
-              placeholder="Kendinden biraz bahset..."
-              placeholderTextColor={theme.textPlaceholder}
-              multiline
-              numberOfLines={4}
-              style={{
-                color: theme.textPrimary,
-                fontSize: 15,
-                lineHeight: 22,
-                minHeight: 100,
-                textAlignVertical: "top",
-              }}
-            />
-          </View>
-
-          {/* Photos Section */}
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 14,
-              padding: 18,
-              marginBottom: 20,
-              borderWidth: 1,
-              borderColor: theme.borderDefault,
-            }}
-          >
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
-              <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700" }}>Fotograflar</Text>
-              <Text style={{ color: theme.textSecondary, fontSize: 13 }}>
-                {photos.length}/6 (en az 2)
-              </Text>
-            </View>
-
-            {/* Photo grid */}
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 10,
-                marginBottom: 16,
-              }}
-            >
-              {slots.map((_, i) => {
-                const photo = photos[i];
-                const slotSize = 95;
-                return (
-                  <View
-                    key={i}
-                    style={{
-                      width: slotSize,
-                      height: slotSize * 1.3,
-                      borderRadius: 14,
-                      overflow: "hidden",
-                      backgroundColor: photo ? "#F0EAF0" : "#F8F4F6",
-                      borderWidth: 1.5,
-                      borderStyle: photo ? "solid" : "dashed",
-                      borderColor: photo ? theme.primary : "#D4B8C4",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {photo ? (
-                      <>
-                        <Pressable
-                          onPress={() => handleRemovePhoto(i)}
-                          testID={`remove-photo-${i}`}
-                          style={{
-                            position: "absolute",
-                            top: 6,
-                            right: 6,
-                            zIndex: 10,
-                            width: 24,
-                            height: 24,
-                            borderRadius: 12,
-                            backgroundColor: "rgba(0,0,0,0.7)",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700" }}>x</Text>
-                        </Pressable>
-                        <Image
-                          source={{ uri: photo }}
-                          style={{ width: "100%", height: "100%" }}
-                          resizeMode="cover"
-                        />
-                      </>
-                    ) : (
-                      <Pressable
-                        onPress={i === photos.length ? handleAddPhoto : undefined}
-                        testID={i === photos.length ? "add-photo-slot" : undefined}
-                        style={{ alignItems: "center", justifyContent: "center", flex: 1 }}
-                      >
-                        <Text
-                          style={{
-                            color: i === photos.length ? theme.primary : "#C4A8B4",
-                            fontSize: 26,
-                            fontWeight: "300",
-                          }}
-                        >
-                          +
-                        </Text>
-                      </Pressable>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Photo picker modal */}
-            {showPicker ? (
-              <View
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  borderRadius: 14,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: "#F0EAF0",
-                  shadowColor: "#000",
-                  shadowOpacity: 0.06,
-                  shadowRadius: 8,
-                  shadowOffset: { width: 0, height: 2 },
-                }}
-              >
-                <Text
-                  style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700", marginBottom: 14, textAlign: "center" }}
-                >
-                  Fotograf Ekle
-                </Text>
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  <Pressable
-                    onPress={takePhoto}
-                    testID="camera-option"
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      backgroundColor: pressed ? "rgba(225,29,72,0.2)" : "rgba(225,29,72,0.1)",
-                      borderRadius: 12,
-                      paddingVertical: 16,
-                      alignItems: "center",
-                      gap: 6,
-                      borderWidth: 1,
-                      borderColor: "rgba(225,29,72,0.3)",
-                    })}
-                  >
-                    <Text style={{ fontSize: 24 }}>C</Text>
-                    <Text style={{ color: theme.accent, fontSize: 13, fontWeight: "600" }}>Kamera</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={pickFromGallery}
-                    testID="gallery-option"
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      backgroundColor: pressed ? "rgba(225,29,72,0.2)" : "rgba(225,29,72,0.1)",
-                      borderRadius: 12,
-                      paddingVertical: 16,
-                      alignItems: "center",
-                      gap: 6,
-                      borderWidth: 1,
-                      borderColor: "rgba(225,29,72,0.3)",
-                    })}
-                  >
-                    <Text style={{ fontSize: 24 }}>G</Text>
-                    <Text style={{ color: theme.accent, fontSize: 13, fontWeight: "600" }}>Galeri</Text>
-                  </Pressable>
-                </View>
-                <Pressable
-                  onPress={() => setShowPicker(false)}
-                  testID="cancel-picker"
-                  style={{ marginTop: 12, alignItems: "center" }}
-                >
-                  <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Iptal</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                onPress={handleAddPhoto}
-                disabled={photos.length >= 6}
-                testID="add-photo-button"
-                style={({ pressed }) => ({
-                  opacity: pressed || photos.length >= 6 ? 0.6 : 1,
-                  backgroundColor: "rgba(212,83,126,0.06)",
-                  borderWidth: 1.5,
-                  borderColor: "rgba(212,83,126,0.25)",
-                  borderRadius: 12,
-                  paddingVertical: 12,
-                  alignItems: "center",
-                })}
-              >
-                <Text style={{ color: theme.accent, fontSize: 14, fontWeight: "600" }}>
-                  + Fotograf Ekle
-                </Text>
-              </Pressable>
-            )}
-          </View>
-
-          {/* Hobbies Section */}
-          <View
-            style={{
-              backgroundColor: theme.surface,
-              borderRadius: 14,
-              padding: 18,
-              marginBottom: 20,
-              borderWidth: 1,
-              borderColor: theme.borderDefault,
-            }}
-          >
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
-              <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700" }}>Hobiler</Text>
-              <Text style={{ color: theme.accent, fontSize: 13 }}>
-                {selectedHobbies.length}/5 (en az 1)
-              </Text>
-            </View>
-
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {HOBBIES.map((hobby) => {
-                const isSelected = selectedHobbies.includes(hobby.value);
-                const isDisabled = !isSelected && selectedHobbies.length >= 5;
-                return (
-                  <Pressable
-                    key={hobby.value}
-                    onPress={() => toggleHobby(hobby.value)}
-                    disabled={isDisabled}
-                    testID={`hobby-${hobby.value}`}
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 10,
-                      borderRadius: 100,
-                      borderWidth: 1.5,
-                      borderColor: isSelected ? theme.primary : "#E8D8E0",
-                      backgroundColor: isSelected ? "rgba(212,83,126,0.10)" : "#F8F4F6",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      opacity: isDisabled ? 0.4 : 1,
-                    }}
-                  >
-                    <hobby.icon size={14} color={isSelected ? theme.accent : theme.textSecondary} />
-                    <Text
-                      style={{
-                        color: isSelected ? theme.accent : theme.textSecondary,
-                        fontSize: 13,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {hobby.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Error message */}
-          {error ? (
-            <Text style={{ color: theme.error, fontSize: 13, marginBottom: 16, textAlign: "center" }}>
-              {error}
+        <UMCard style={{ marginBottom: 16 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
+            <Text style={{ color: Colors.textDark, fontSize: 16, fontFamily: "DMSans_600SemiBold" }}>Hakkında</Text>
+            <Text style={{ color: Colors.textMuted, fontSize: 12, fontFamily: "DMSans_400Regular" }}>
+              {bio.length}/{BIO_MAX_LENGTH}
             </Text>
-          ) : null}
-        </View>
+          </View>
+          <TextInput
+            testID="bio-input"
+            value={bio}
+            onChangeText={(text) => setBio(text.slice(0, BIO_MAX_LENGTH))}
+            placeholder="Kendinden biraz bahset..."
+            placeholderTextColor={Colors.textMuted}
+            multiline
+            numberOfLines={4}
+            style={{
+              color: Colors.textDark,
+              fontSize: 15,
+              lineHeight: 22,
+              minHeight: 100,
+              textAlignVertical: "top",
+              fontFamily: "DMSans_400Regular",
+            }}
+          />
+        </UMCard>
+
+        <UMCard style={{ marginBottom: 16 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 14 }}>
+            <Text style={{ color: Colors.textDark, fontSize: 16, fontFamily: "DMSans_600SemiBold" }}>Fotoğraflar</Text>
+            <Text style={{ color: Colors.textMuted, fontSize: 12, fontFamily: "DMSans_400Regular" }}>
+              {photos.length}/6 (en az 2)
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+            {slots.map((_, i) => {
+              const photo = photos[i];
+              const slotSize = 95;
+              const isNextSlot = i === photos.length;
+              return (
+                <View
+                  key={i}
+                  style={{
+                    width: slotSize,
+                    height: slotSize * 1.3,
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    backgroundColor: Colors.bgLight,
+                    borderWidth: 1.5,
+                    borderStyle: photo ? "solid" : "dashed",
+                    borderColor: photo ? Colors.primary : isNextSlot ? Colors.primary : "rgba(0,0,0,0.1)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {photo ? (
+                    <>
+                      <Pressable
+                        onPress={() => handleRemovePhoto(i)}
+                        testID={`remove-photo-${i}`}
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          right: 6,
+                          zIndex: 10,
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          backgroundColor: "rgba(0,0,0,0.7)",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Ionicons name="close-outline" size={14} color="#fff" />
+                      </Pressable>
+                      <Image
+                        source={{ uri: photo }}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                    </>
+                  ) : (
+                    <Pressable
+                      onPress={isNextSlot ? handleAddPhoto : undefined}
+                      testID={isNextSlot ? "add-photo-slot" : undefined}
+                      style={{ alignItems: "center", justifyContent: "center", flex: 1, alignSelf: "stretch" }}
+                    >
+                      {isNextSlot ? <Ionicons name="add-outline" size={28} color={Colors.primary} /> : null}
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          <UMButton variant="ghost" label="+ Fotoğraf Ekle" onPress={handleAddPhoto} disabled={photos.length >= 6} />
+        </UMCard>
+
+        <UMCard style={{ marginBottom: 16 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 14 }}>
+            <Text style={{ color: Colors.textDark, fontSize: 16, fontFamily: "DMSans_600SemiBold" }}>Hobiler</Text>
+            <Text style={{ color: Colors.primary, fontSize: 12, fontFamily: "DMSans_500Medium" }}>
+              {selectedHobbies.length}/5 (en az 1)
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {HOBBIES.map((hobby) => {
+              const isSelected = selectedHobbies.includes(hobby.value);
+              const isDisabled = !isSelected && selectedHobbies.length >= 5;
+              return (
+                <Pressable
+                  key={hobby.value}
+                  onPress={() => toggleHobby(hobby.value)}
+                  disabled={isDisabled}
+                  testID={`hobby-${hobby.value}`}
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderRadius: Radius.pill,
+                    borderWidth: 1.5,
+                    borderColor: isSelected ? Colors.primary : "rgba(0,0,0,0.08)",
+                    backgroundColor: isSelected ? Colors.primaryPale : Colors.bgLight,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    opacity: isDisabled ? 0.4 : 1,
+                  }}
+                >
+                  <Ionicons name={hobby.icon} size={14} color={isSelected ? Colors.primaryDark : Colors.textMuted} />
+                  <Text
+                    style={{
+                      color: isSelected ? Colors.primaryDark : Colors.textMuted,
+                      fontSize: 13,
+                      fontFamily: "DMSans_500Medium",
+                    }}
+                  >
+                    {hobby.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </UMCard>
+
+        {error ? (
+          <Text style={{ color: "#FF3B30", fontSize: 13, marginBottom: 16, textAlign: "center", fontFamily: "DMSans_400Regular" }}>
+            {error}
+          </Text>
+        ) : null}
       </ScrollView>
 
-      {/* Fixed save button at bottom */}
       <View
         style={{
           position: "absolute",
@@ -547,44 +415,22 @@ export default function EditProfileScreen() {
           paddingHorizontal: 20,
           paddingTop: 12,
           paddingBottom: insets.bottom + 16,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: Colors.white,
           borderTopWidth: 1,
-          borderTopColor: "#F0EAF0",
+          borderTopColor: "rgba(0,0,0,0.06)",
           shadowColor: "#000",
           shadowOpacity: 0.06,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: -2 },
         }}
       >
-        <Pressable
+        <UMButton
+          variant="primary"
+          label="Kaydet"
+          icon="checkmark-outline"
+          loading={saveMutation.isPending}
           onPress={handleSave}
-          disabled={saveMutation.isPending}
-          testID="save-button"
-          style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-        >
-          <LinearGradient
-            colors={gradients.button}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{
-              paddingVertical: 16,
-              borderRadius: 14,
-              alignItems: "center",
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
-            {saveMutation.isPending ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Check size={20} color="#fff" />
-                <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Kaydet</Text>
-              </>
-            )}
-          </LinearGradient>
-        </Pressable>
+        />
       </View>
     </View>
   );
