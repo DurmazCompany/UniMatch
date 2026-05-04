@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Image } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, StatusBar } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,24 +14,25 @@ import Animated, {
   withDelay,
   interpolate,
 } from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/lib/api/api";
 import { authClient } from "@/lib/auth/auth-client";
 import { useInvalidateSession } from "@/lib/auth/use-session";
 import { Profile, WhoLikedMeResponse } from "@/lib/types";
-import { theme, gradients } from "@/lib/theme";
+import { Colors, Radius, Spacing } from "@/lib/theme";
+import { UMAvatar, UMCard, UMButton } from "@/components/ui";
 import { getZodiacSign, getZodiacInfo } from "@/lib/astrology";
 import { useScreenProtection } from "@/lib/hooks/useScreenProtection";
 import { usePrivacyStore } from "@/lib/state/privacyStore";
 import { Alert } from "react-native";
 
-import {
-  Bell, Shield, CircleHelp, LogOut, ChevronRight, Settings,
-  Edit2, Camera, Flame, Lightbulb, Sunrise, Moon, BookOpen, Coffee, Leaf,
-} from "lucide-react-native";
+const ERROR_RED = "#FF6B6B";
+const SUCCESS_GREEN = "#4CD964";
+const WARN_YELLOW = "#FFCC00";
 
 function ProfilePowerBar({ power }: { power: number }) {
   const pct = Math.min(power, 100);
-  const color = pct < 40 ? theme.error : pct < 70 ? theme.warning : theme.success;
+  const color = pct < 40 ? ERROR_RED : pct < 70 ? WARN_YELLOW : SUCCESS_GREEN;
   const shimmer = useSharedValue(-1);
 
   useEffect(() => {
@@ -51,37 +52,24 @@ function ProfilePowerBar({ power }: { power: number }) {
   }));
 
   return (
-    <View
-      style={{
-        backgroundColor: "#FFFFFF",
-        borderRadius: 16,
-        padding: 18,
-        marginBottom: 14,
-        shadowColor: "#000",
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
-      }}
-    >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
-        <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700" }}>Profil Gücü</Text>
-        <Text style={{ color, fontSize: 15, fontWeight: "800" }}>{pct}%</Text>
+    <UMCard dark style={{ marginBottom: 14 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
+        <Text style={{ color: Colors.textOnDark, fontSize: 15, fontFamily: "DMSans_700Bold" }}>Profil Gücü</Text>
+        <Text style={{ color, fontSize: 15, fontFamily: "DMSans_700Bold" }}>{pct}%</Text>
       </View>
-      <View style={{ height: 8, backgroundColor: "#F0EAF0", borderRadius: 4, overflow: "hidden" }}>
+      <View style={{ height: 8, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 4, overflow: "hidden" }}>
         <LinearGradient
           colors={
             pct < 40
-              ? [theme.error, "#F97316"]
+              ? [ERROR_RED, "#F97316"]
               : pct < 70
-              ? [theme.warning, "#FBBF24"]
-              : ["#059669", theme.success]
+              ? [WARN_YELLOW, "#FBBF24"]
+              : ["#34D399", SUCCESS_GREEN]
           }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{ height: "100%", width: `${pct}%`, borderRadius: 4, overflow: "hidden" }}
         >
-          {/* Shimmer */}
           <Animated.View
             style={[
               {
@@ -98,14 +86,14 @@ function ProfilePowerBar({ power }: { power: number }) {
         </LinearGradient>
       </View>
       {pct < 80 ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 9 }}>
-          <Lightbulb size={14} color={theme.textSecondary} />
-          <Text style={{ color: theme.textSecondary, fontSize: 12, lineHeight: 18 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 }}>
+          <Ionicons name="bulb-outline" size={14} color={Colors.textOnDarkMuted} />
+          <Text style={{ color: Colors.textOnDarkMuted, fontSize: 12, fontFamily: "DMSans_400Regular", lineHeight: 18, flex: 1 }}>
             Profilini %80&apos;e tamamlarsan 3x daha fazla kişiye gösterilirsin!
           </Text>
         </View>
       ) : null}
-    </View>
+    </UMCard>
   );
 }
 
@@ -114,98 +102,62 @@ function ZodiacSection({ birthDate }: { birthDate: string }) {
   const info = getZodiacInfo(sign);
 
   const elementColors: Record<string, [string, string]> = {
-    fire: ["#E8445A", "#FF8C00"],
+    fire: [Colors.coral, "#FF8C00"],
     earth: ["#4CAF50", "#2E7D32"],
     air: ["#29B6F6", "#0288D1"],
-    water: ["#7C4DFF", "#3949AB"],
+    water: [Colors.primary, Colors.primaryDark],
   };
-  const [gradStart, gradEnd] = elementColors[info.element] ?? ["#E8445A", "#FF5E73"];
+  const [gradStart, gradEnd] = elementColors[info.element] ?? [Colors.coral, "#FF5E73"];
 
   return (
     <View
       style={{
-        backgroundColor: "#FFFFFF",
-        borderRadius: 16,
+        backgroundColor: Colors.cardDark,
+        borderRadius: Radius.card,
         marginBottom: 14,
         overflow: "hidden",
-        shadowColor: "#000",
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
       }}
     >
-      <LinearGradient
-        colors={[`${gradStart}18`, "transparent"]}
-        style={{ padding: 18 }}
-      >
-        {/* Header */}
+      <LinearGradient colors={[`${gradStart}33`, "transparent"]} style={{ padding: Spacing.lg }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 1.5,
-              borderColor: `${gradStart}40`,
-            }}
+          <LinearGradient
+            colors={[gradStart, gradEnd]}
+            style={{ width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" }}
           >
-            <LinearGradient
-              colors={[gradStart, gradEnd]}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ fontSize: 22 }}>{info.symbol}</Text>
-            </LinearGradient>
-          </View>
+            <Text style={{ fontSize: 22 }}>{info.symbol}</Text>
+          </LinearGradient>
           <View>
-            <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>
+            <Text style={{ color: Colors.textOnDarkMuted, fontSize: 11, fontFamily: "DMSans_600SemiBold", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>
               Burç
             </Text>
-            <Text style={{ color: theme.textPrimary, fontSize: 20, fontWeight: "800" }}>
+            <Text style={{ color: Colors.textOnDark, fontSize: 20, fontFamily: "DMSans_700Bold" }}>
               {info.symbol} {info.turkishName}
             </Text>
           </View>
         </View>
 
-        {/* Traits */}
         <View style={{ gap: 8, marginBottom: 12 }}>
           {info.traits.map((trait, i) => (
             <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: 3,
-                  backgroundColor: gradStart,
-                }}
-              />
-              <Text style={{ color: theme.textSecondary, fontSize: 14, lineHeight: 20 }}>{trait}</Text>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: gradStart }} />
+              <Text style={{ color: Colors.textOnDarkMuted, fontSize: 14, fontFamily: "DMSans_400Regular", lineHeight: 20 }}>
+                {trait}
+              </Text>
             </View>
           ))}
         </View>
 
-        {/* Relationship style */}
         <View
           style={{
-            backgroundColor: "#F8F4F6",
-            borderRadius: 10,
+            backgroundColor: "rgba(255,255,255,0.04)",
+            borderRadius: 12,
             padding: 12,
-            borderWidth: 1,
-            borderColor: "#F0EAF0",
           }}
         >
-          <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "600", letterSpacing: 0.5, marginBottom: 4 }}>
+          <Text style={{ color: Colors.textOnDarkMuted, fontSize: 11, fontFamily: "DMSans_600SemiBold", letterSpacing: 0.5, marginBottom: 4 }}>
             İLİŞKİ TARZI
           </Text>
-          <Text style={{ color: theme.textPrimary, fontSize: 13, lineHeight: 19 }}>
+          <Text style={{ color: Colors.textOnDark, fontSize: 13, fontFamily: "DMSans_400Regular", lineHeight: 19 }}>
             {info.relationshipStyle}
           </Text>
         </View>
@@ -224,7 +176,6 @@ function parsePhotos(photos: string | string[]): string[] {
 }
 
 export default function ProfileScreen() {
-  // 🔒 Ekran görüntüsü / kayıt koruması
   useScreenProtection();
 
   const blockUser = usePrivacyStore((state) => state.blockUser);
@@ -287,7 +238,6 @@ export default function ProfileScreen() {
 
   const handleBlockUser = async () => {
     if (!profile) return;
-    
     Alert.alert(
       "Kullanıcıyı Engelle",
       "Bu kullanıcıyı engellemek istediğinize emin misiniz? (Bir daha eşleşemezsiniz)",
@@ -298,11 +248,8 @@ export default function ProfileScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // Not: profile.tsx şu an "my-profile" için çalışıyor olabilir, 
-              // ancak ileride dış profiller için kullanılacaksa profile.userId engellenecektir.
               await blockUser(profile.userId);
               Alert.alert("Başarılı", "Kullanıcı engellendi.");
-              // router.back() eğer bu ekran push edilmişse çalışır, tab ise hiçbir şey yapmaz
               if (router.canGoBack()) {
                 router.back();
               }
@@ -317,8 +264,9 @@ export default function ProfileScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F8F4F6", alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator color={theme.primary} size="large" />
+      <View style={{ flex: 1, backgroundColor: Colors.bgDark, alignItems: "center", justifyContent: "center" }}>
+        <StatusBar barStyle="light-content" />
+        <ActivityIndicator color={Colors.primary} size="large" />
       </View>
     );
   }
@@ -326,10 +274,6 @@ export default function ProfileScreen() {
   if (!profile) return null;
 
   const photos = parsePhotos(profile.photos);
-  const lifestyle = (() => {
-    if (!profile.lifestyle) return {};
-    try { return JSON.parse(profile.lifestyle); } catch { return {}; }
-  })();
   const alreadyOnCampus = profile.isOnCampusToday || campusPressed;
 
   const getAge = () => {
@@ -338,8 +282,9 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8F4F6" }} testID="profile-screen">
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1, backgroundColor: Colors.bgDark }} testID="profile-screen">
+      <StatusBar barStyle="light-content" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View
           style={{
@@ -351,157 +296,111 @@ export default function ProfileScreen() {
             alignItems: "center",
           }}
         >
-          <Text style={{ color: theme.textPrimary, fontSize: 28, fontWeight: "700" }}>Profil</Text>
+          <Text style={{ color: Colors.textOnDark, fontSize: 28, fontFamily: "DMSerifDisplay_400Regular" }}>Profilim</Text>
           <Pressable
             onPress={() => router.push("/(app)/edit-profile")}
             style={({ pressed }) => ({
               width: 40,
               height: 40,
               borderRadius: 20,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: Colors.surfaceDark,
               alignItems: "center",
               justifyContent: "center",
               opacity: pressed ? 0.7 : 1,
-              shadowColor: "#000",
-              shadowOpacity: 0.06,
-              shadowRadius: 4,
-              shadowOffset: { width: 0, height: 1 },
-              elevation: 1,
             })}
           >
-            <Settings size={20} color="#8A6F78" />
-          </Pressable>
-        </View>
-
-        {/* Profile avatar + info */}
-        <View style={{ alignItems: "center", paddingBottom: 28 }}>
-          <View style={{ position: "relative", marginBottom: 16 }}>
-            {photos.length > 0 ? (
-              <Image
-                source={{ uri: photos[0] }}
-                style={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: 60,
-                  borderWidth: 3,
-                  borderColor: theme.primary,
-                }}
-              />
-            ) : (
-              <LinearGradient
-                colors={gradients.button}
-                style={{ width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center" }}
-              >
-                <Text style={{ color: "#fff", fontSize: 48, fontWeight: "700" }}>
-                  {profile.name[0]?.toUpperCase()}
-                </Text>
-              </LinearGradient>
-            )}
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/(app)/edit-profile");
-              }}
-              style={({ pressed }) => ({
-                position: "absolute",
-                bottom: 0,
-                right: 0,
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: theme.primary,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 3,
-                borderColor: "#F8F4F6",
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Camera size={16} color="#fff" />
-            </Pressable>
-          </View>
-
-          <Text style={{ color: theme.textPrimary, fontSize: 24, fontWeight: "700" }}>
-            {profile.name}, {getAge()}
-          </Text>
-          <Text style={{ color: theme.textSecondary, fontSize: 15, marginTop: 4 }}>
-            {profile.department} · {profile.year}. Sınıf
-          </Text>
-          <Text style={{ color: theme.textSecondary, fontSize: 14, marginTop: 2 }}>
-            {profile.university}
-          </Text>
-
-          {/* Streak with glow */}
-          {profile.streakCount > 0 ? (
-            <Animated.View
-              style={[
-                {
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: "#FFF8E6",
-                  borderRadius: 100,
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  marginTop: 14,
-                  gap: 6,
-                  shadowColor: "#F59E0B",
-                  shadowOffset: { width: 0, height: 0 },
-                  borderWidth: 1,
-                  borderColor: "rgba(245,158,11,0.35)",
-                },
-                streakGlowStyle,
-              ]}
-            >
-              <Flame size={16} color="#F59E0B" />
-              <Text style={{ color: "#F59E0B", fontSize: 14, fontWeight: "700" }}>
-                {profile.streakCount} günlük streak
-              </Text>
-            </Animated.View>
-          ) : null}
-
-          {/* Edit Profile Button */}
-          <Pressable
-            testID="edit-profile-button"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/(app)/edit-profile");
-            }}
-            style={({ pressed }) => ({ marginTop: 16, opacity: pressed ? 0.8 : 1 })}
-          >
-            <LinearGradient
-              colors={gradients.button}
-              style={{ paddingVertical: 14, paddingHorizontal: 32, borderRadius: 28 }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Edit2 size={16} color="#fff" />
-                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>Profili Düzenle</Text>
-              </View>
-            </LinearGradient>
+            <Ionicons name="settings-outline" size={20} color={Colors.textOnDark} />
           </Pressable>
         </View>
 
         <View style={{ paddingHorizontal: 16 }}>
-          {/* Profile power bar */}
+          {/* Profile card */}
+          <UMCard dark style={{ alignItems: "center", marginBottom: 14, paddingTop: 24, paddingBottom: 20 }}>
+            <View style={{ position: "relative", marginBottom: 14 }}>
+              <UMAvatar uri={photos[0]} size="xl" ring fallback={profile.name} />
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push("/(app)/edit-profile");
+                }}
+                style={({ pressed }) => ({
+                  position: "absolute",
+                  bottom: 0,
+                  right: 0,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: Colors.primary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 3,
+                  borderColor: Colors.cardDark,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Ionicons name="camera-outline" size={16} color={Colors.white} />
+              </Pressable>
+            </View>
+
+            <Text style={{ color: Colors.textOnDark, fontSize: 24, fontFamily: "DMSans_700Bold" }}>
+              {profile.name}, {getAge()}
+            </Text>
+            <Text style={{ color: Colors.textOnDarkMuted, fontSize: 15, fontFamily: "DMSans_400Regular", marginTop: 4 }}>
+              {profile.department} · {profile.year}. Sınıf
+            </Text>
+            <Text style={{ color: Colors.textOnDarkMuted, fontSize: 14, fontFamily: "DMSans_400Regular", marginTop: 2 }}>
+              {profile.university}
+            </Text>
+
+            {profile.streakCount > 0 ? (
+              <Animated.View
+                style={[
+                  {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: "rgba(255,149,0,0.12)",
+                    borderRadius: Radius.tag,
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    marginTop: 14,
+                    gap: 6,
+                    shadowColor: "#FF9500",
+                    shadowOffset: { width: 0, height: 0 },
+                    borderWidth: 1,
+                    borderColor: "rgba(255,149,0,0.3)",
+                  },
+                  streakGlowStyle,
+                ]}
+              >
+                <Ionicons name="flame-outline" size={16} color="#FF9500" />
+                <Text style={{ color: "#FF9500", fontSize: 14, fontFamily: "DMSans_700Bold" }}>
+                  {profile.streakCount} günlük streak
+                </Text>
+              </Animated.View>
+            ) : null}
+
+            <View style={{ marginTop: 18, alignSelf: "stretch" }}>
+              <UMButton
+                variant="primary"
+                label="Profili Düzenle"
+                icon="create-outline"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push("/(app)/edit-profile");
+                }}
+              />
+            </View>
+          </UMCard>
+
+          {/* Profile power */}
           <ProfilePowerBar power={profile.profilePower} />
 
-          {/* Zodiac section */}
+          {/* Zodiac */}
           <ZodiacSection birthDate={profile.birthDate} />
 
           {/* Who liked me */}
-          <View
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 16,
-              padding: 18,
-              marginBottom: 14,
-              shadowColor: "#000",
-              shadowOpacity: 0.06,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 2,
-            }}
-          >
-            <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700", marginBottom: 12 }}>
+          <UMCard dark style={{ marginBottom: 14 }}>
+            <Text style={{ color: Colors.textOnDark, fontSize: 15, fontFamily: "DMSans_700Bold", marginBottom: 12 }}>
               Seni Beğenenler
             </Text>
             <View style={{ flexDirection: "row", marginBottom: 12 }}>
@@ -512,10 +411,10 @@ export default function ProfileScreen() {
                     width: 48,
                     height: 48,
                     borderRadius: 24,
-                    backgroundColor: i === 0 ? "#F9D0DA" : i === 1 ? "#F2A8B8" : "#E8436A",
-                    marginLeft: i > 0 ? -12 : 0,
+                    backgroundColor: i === 0 ? Colors.primaryLight : i === 1 ? Colors.primary : Colors.coral,
+                    marginLeft: i > 0 ? -14 : 0,
                     borderWidth: 3,
-                    borderColor: "#FFFFFF",
+                    borderColor: Colors.cardDark,
                   }}
                 />
               ))}
@@ -525,135 +424,55 @@ export default function ProfileScreen() {
                     width: 48,
                     height: 48,
                     borderRadius: 24,
-                    backgroundColor: theme.surface,
-                    marginLeft: -12,
+                    backgroundColor: Colors.surfaceDark,
+                    marginLeft: -14,
                     borderWidth: 2,
-                    borderColor: theme.primary,
+                    borderColor: Colors.primary,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Text style={{ color: theme.primary, fontSize: 12, fontWeight: "700" }}>
+                  <Text style={{ color: Colors.primaryLight, fontSize: 12, fontFamily: "DMSans_700Bold" }}>
                     +{(whoLikedMe?.count ?? 0) - 3}
                   </Text>
                 </View>
               ) : null}
             </View>
-            <Text style={{ color: theme.textSecondary, fontSize: 14, marginBottom: 12 }}>
+            <Text style={{ color: Colors.textOnDarkMuted, fontSize: 14, fontFamily: "DMSans_400Regular", marginBottom: 14 }}>
               {whoLikedMe?.count ?? 0} kişi seni beğendi
             </Text>
             <Pressable
               testID="premium-upgrade-button"
               onPress={() => router.push("/paywall")}
-              style={({ pressed }) => ({
-                backgroundColor: "rgba(232,68,90,0.1)",
-                borderRadius: 12,
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                opacity: pressed ? 0.8 : 1,
-              })}
+              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
             >
-              <Text style={{ color: theme.primary, fontSize: 14, fontWeight: "600", textAlign: "center" }}>
-                Premium ile kimler beğendiğini gör
-              </Text>
+              <UMButton variant="ghost" label="Premium ile gör" onPress={() => router.push("/paywall")} />
             </Pressable>
-          </View>
+          </UMCard>
 
-          {/* Lifestyle info */}
-          {lifestyle.schedule || lifestyle.spot ? (
-            <View
-              style={{
-                backgroundColor: "#FFFFFF",
-                borderRadius: 16,
-                padding: 18,
-                marginBottom: 14,
-                shadowColor: "#000",
-                shadowOpacity: 0.06,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 2,
-              }}
-            >
-              <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700", marginBottom: 12 }}>
-                Yaşam Tarzı
-              </Text>
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                {lifestyle.schedule === "morning" ? (
-                  <View style={chipStyle}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Sunrise size={12} color={theme.primary} />
-                      <Text style={chipText}>Sabahçı</Text>
-                    </View>
-                  </View>
-                ) : lifestyle.schedule === "night" ? (
-                  <View style={chipStyle}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Moon size={12} color={theme.primary} />
-                      <Text style={chipText}>Gece Kuşu</Text>
-                    </View>
-                  </View>
-                ) : null}
-                {lifestyle.spot === "library" ? (
-                  <View style={chipStyle}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <BookOpen size={12} color={theme.primary} />
-                      <Text style={chipText}>Kütüphane</Text>
-                    </View>
-                  </View>
-                ) : lifestyle.spot === "cafeteria" ? (
-                  <View style={chipStyle}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Coffee size={12} color={theme.primary} />
-                      <Text style={chipText}>Kafeterya</Text>
-                    </View>
-                  </View>
-                ) : lifestyle.spot === "outdoor" ? (
-                  <View style={chipStyle}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Leaf size={12} color={theme.primary} />
-                      <Text style={chipText}>Dışarısı</Text>
-                    </View>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          ) : null}
-
-          {/* Settings List */}
-          <View
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 16,
-              marginBottom: 24,
-              overflow: "hidden",
-              shadowColor: "#000",
-              shadowOpacity: 0.06,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 2,
-            }}
-          >
+          {/* Settings list */}
+          <UMCard dark style={{ padding: 0, marginBottom: Spacing.xxl, overflow: "hidden" }}>
             <SettingsItem
-              icon={<Bell size={20} color={theme.textSecondary} />}
+              iconName="notifications-outline"
               label="Bildirimler"
               onPress={() => router.push("/(app)/settings/notifications")}
             />
-            <SettingsItem icon={<Shield size={20} color={theme.textSecondary} />} label="Gizlilik ve Güvenlik" />
-            <SettingsItem icon={<CircleHelp size={20} color={theme.textSecondary} />} label="Yardım ve Destek" />
+            <SettingsItem iconName="shield-checkmark-outline" label="Gizlilik ve Güvenlik" />
+            <SettingsItem iconName="help-circle-outline" label="Yardım ve Destek" />
             <SettingsItem
-              icon={<Shield size={20} color={theme.error} />}
+              iconName="ban-outline"
               label="Engelle"
               onPress={handleBlockUser}
               isDestructive
             />
             <SettingsItem
-              icon={<LogOut size={20} color={theme.error} />}
+              iconName="log-out-outline"
               label="Çıkış Yap"
               onPress={handleSignOut}
               isLast
               isDestructive
             />
-          </View>
+          </UMCard>
         </View>
       </ScrollView>
     </View>
@@ -661,50 +480,39 @@ export default function ProfileScreen() {
 }
 
 function SettingsItem({
-  icon,
+  iconName,
   label,
   onPress,
   isLast,
   isDestructive,
 }: {
-  icon: React.ReactNode;
+  iconName: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress?: () => void;
   isLast?: boolean;
   isDestructive?: boolean;
 }) {
+  const color = isDestructive ? ERROR_RED : Colors.textOnDark;
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
-        padding: 16,
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: 16,
         borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: "#F0EAF0",
-        backgroundColor: pressed ? "#F8F4F6" : "transparent",
+        borderBottomColor: "rgba(255,255,255,0.06)",
+        backgroundColor: pressed ? "rgba(255,255,255,0.03)" : "transparent",
       })}
     >
-      <View style={{ width: 36 }}>{icon}</View>
-      <Text style={{ flex: 1, color: isDestructive ? theme.error : theme.textPrimary, fontSize: 16, fontWeight: "500" }}>
+      <View style={{ width: 32 }}>
+        <Ionicons name={iconName} size={20} color={isDestructive ? ERROR_RED : Colors.textOnDarkMuted} />
+      </View>
+      <Text style={{ flex: 1, color, fontSize: 15, fontFamily: "DMSans_500Medium" }}>
         {label}
       </Text>
-      {!isDestructive ? <ChevronRight size={18} color={theme.textSecondary} /> : null}
+      {!isDestructive ? <Ionicons name="chevron-forward-outline" size={18} color={Colors.textOnDarkMuted} /> : null}
     </Pressable>
   );
 }
-
-const chipStyle = {
-  backgroundColor: "rgba(232,68,90,0.08)",
-  borderWidth: 0.5,
-  borderColor: "rgba(232,68,90,0.25)",
-  borderRadius: 100,
-  paddingHorizontal: 12,
-  paddingVertical: 6,
-} as const;
-
-const chipText = {
-  color: theme.primary,
-  fontSize: 13,
-  fontWeight: "600" as const,
-};

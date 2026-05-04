@@ -11,6 +11,7 @@ import {
   Image,
   Modal,
   Dimensions,
+  StatusBar,
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,20 +20,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { fetch } from "expo/fetch";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/lib/api/api";
 import { authClient } from "@/lib/auth/auth-client";
 import { useSession } from "@/lib/auth/use-session";
 import { Match, Message, Profile } from "@/lib/types";
 import { format, isToday, isYesterday } from "date-fns";
 import { tr } from "date-fns/locale";
-import { CheckCheck, Send, ChevronLeft, MoreVertical, Mic, X, Snowflake, Image as ImageIcon, Eye, Flame } from "lucide-react-native";
+import { Colors, Radius } from "@/lib/theme";
+import { UMAvatar } from "@/components/ui";
 import { useVoiceRecording } from "@/lib/hooks/useVoiceRecording";
 import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
 import { useScreenProtectionOnFocus } from "@/lib/hooks/useScreenProtection";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-// Conversation starter suggestions shown when chat is empty
 const CONVERSATION_STARTERS = [
   "Merhaba! Profilini çok beğendim 😊",
   "Hangi bölümdeydin? 🎓",
@@ -43,19 +45,6 @@ const CONVERSATION_STARTERS = [
 
 function getPartnerProfile(match: Match, myUserId: string): Profile {
   return match.user1.userId === myUserId ? match.user2 : match.user1;
-}
-
-function getProfileColor(id: string): [string, string] {
-  const colors: [string, string][] = [
-    ["#E8445A", "#FF5E73"],
-    ["#059669", "#34D399"],
-    ["#DC2626", "#F87171"],
-    ["#D97706", "#FCD34D"],
-    ["#2563EB", "#60A5FA"],
-    ["#DB2777", "#F472B6"],
-  ];
-  const idx = id.charCodeAt(0) % colors.length;
-  return colors[idx];
 }
 
 function parsePhotos(photos: string | string[]): string[] {
@@ -79,14 +68,7 @@ function formatDateSeparator(date: Date | string): string {
   return format(d, "d MMMM", { locale: tr });
 }
 
-// Ephemeral photo viewer overlay
-function EphemeralPhotoViewer({
-  uri,
-  onClose,
-}: {
-  uri: string;
-  onClose: () => void;
-}) {
+function EphemeralPhotoViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
   const [secondsLeft, setSecondsLeft] = useState(5);
 
   useEffect(() => {
@@ -106,19 +88,10 @@ function EphemeralPhotoViewer({
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.95)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.95)", alignItems: "center", justifyContent: "center" }}
         testID="ephemeral-photo-viewer"
       >
-        <Image
-          source={{ uri }}
-          style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.75 }}
-          resizeMode="contain"
-        />
+        <Image source={{ uri }} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.75 }} resizeMode="contain" />
         <View
           style={{
             position: "absolute",
@@ -133,10 +106,8 @@ function EphemeralPhotoViewer({
             gap: 6,
           }}
         >
-          <Eye size={16} color="#FF5E73" />
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
-            {secondsLeft}s
-          </Text>
+          <Ionicons name="eye-outline" size={16} color={Colors.coral} />
+          <Text style={{ color: Colors.white, fontFamily: "DMSans_700Bold", fontSize: 15 }}>{secondsLeft}s</Text>
         </View>
         <Pressable
           onPress={onClose}
@@ -150,7 +121,7 @@ function EphemeralPhotoViewer({
           }}
           testID="close-ephemeral-viewer"
         >
-          <X size={22} color="#fff" />
+          <Ionicons name="close-outline" size={22} color={Colors.white} />
         </Pressable>
         <Text
           style={{
@@ -158,6 +129,7 @@ function EphemeralPhotoViewer({
             bottom: 60,
             color: "rgba(255,255,255,0.5)",
             fontSize: 13,
+            fontFamily: "DMSans_400Regular",
           }}
         >
           Bu fotoğraf bir kez görüntülenebilir
@@ -168,7 +140,6 @@ function EphemeralPhotoViewer({
 }
 
 export default function ChatScreen() {
-  // 🔒 Ekran görüntüsü / kayıt koruması (tab navigation'da her focus'ta devreye girer)
   useScreenProtectionOnFocus();
 
   const { matchId } = useLocalSearchParams<{ matchId: string }>();
@@ -181,15 +152,12 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const isMounted = useRef(true);
 
-  // Photo upload state
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
-  // Ephemeral photo tracking (client-side only, resets on navigation)
   const [viewedEphemeralIds, setViewedEphemeralIds] = useState<Set<string>>(new Set());
   const [ephemeralViewerUri, setEphemeralViewerUri] = useState<string | null>(null);
   const [currentEphemeralId, setCurrentEphemeralId] = useState<string | null>(null);
 
-  // Voice recording
   const { isRecording, duration, startRecording, stopRecording, cancelRecording } = useVoiceRecording();
   const [isSendingVoice, setIsSendingVoice] = useState(false);
 
@@ -199,14 +167,12 @@ export default function ChatScreen() {
     };
   }, []);
 
-  // Mark messages as read when entering chat
   useEffect(() => {
     if (matchId) {
       api.patch(`/api/matches/${matchId}/read`, {}).catch(() => {});
     }
   }, [matchId]);
 
-  // SSE: listen for new messages in real-time
   useEffect(() => {
     if (!matchId) return;
 
@@ -260,12 +226,12 @@ export default function ChatScreen() {
                 );
               }
             } catch {
-              // malformed JSON — skip
+              // skip
             }
           }
         }
       } catch {
-        // aborted or network error — do nothing
+        // skip
       }
     };
 
@@ -276,7 +242,6 @@ export default function ChatScreen() {
     };
   }, [matchId, queryClient]);
 
-  // Simulate typing indicator when partner might be typing
   useEffect(() => {
     const interval = setInterval(() => {
       if (Math.random() < 0.1) {
@@ -314,10 +279,12 @@ export default function ChatScreen() {
   const myProfile = match ? (match.user1.userId === myUserId ? match.user1 : match.user2) : null;
   const isPremiumAsk = myProfile?.premiumTier === "ask";
   const partner = match ? getPartnerProfile(match, myUserId) : null;
-  const [pc1, pc2] = partner ? getProfileColor(partner.id) : ["#E8445A", "#FF5E73"];
   const partnerPhotos = partner ? parsePhotos(partner.photos) : [];
 
-  // Group messages by date
+  const expiresInMs = match?.expiresAt ? new Date(match.expiresAt).getTime() - Date.now() : null;
+  const isExpiringSoon = expiresInMs !== null && expiresInMs > 0 && expiresInMs < 24 * 60 * 60 * 1000;
+  const expiryHours = expiresInMs !== null ? Math.max(0, Math.floor(expiresInMs / (60 * 60 * 1000))) : 0;
+
   const messagesWithSeparators = useMemo(() => {
     const msgs = messages ?? [];
     const result: (Message | { type: "separator"; date: string })[] = [];
@@ -359,19 +326,13 @@ export default function ChatScreen() {
     [sendMessage]
   );
 
-  // Upload an image and send as chat message
   const uploadImageAndSend = useCallback(
     async (uri: string, isEphemeral: boolean) => {
       setIsUploadingPhoto(true);
       try {
         const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
-
         const formData = new FormData();
-        formData.append("file", {
-          uri,
-          type: "image/jpeg",
-          name: "chat_photo.jpg",
-        } as unknown as Blob);
+        formData.append("file", { uri, type: "image/jpeg", name: "chat_photo.jpg" } as unknown as Blob);
 
         const uploadResponse = await fetch(`${baseUrl}/api/uploads/image`, {
           method: "POST",
@@ -383,19 +344,12 @@ export default function ChatScreen() {
           throw new Error("Image upload failed");
         }
 
-        const uploadResult = await uploadResponse.json() as { data?: { url?: string } };
+        const uploadResult = (await uploadResponse.json()) as { data?: { url?: string } };
         const imageUrl = uploadResult.data?.url;
-
-        if (!imageUrl) {
-          throw new Error("No image URL returned");
-        }
+        if (!imageUrl) throw new Error("No image URL returned");
 
         const messageType = isEphemeral ? "ephemeral_photo" : "photo";
-
-        await api.post<Message>(`/api/matches/${matchId}/messages`, {
-          content: imageUrl,
-          messageType,
-        });
+        await api.post<Message>(`/api/matches/${matchId}/messages`, { content: imageUrl, messageType });
 
         queryClient.invalidateQueries({ queryKey: ["messages", matchId] });
         queryClient.invalidateQueries({ queryKey: ["matches"] });
@@ -413,9 +367,7 @@ export default function ChatScreen() {
   const handlePickPhoto = useCallback(
     async (isEphemeral: boolean) => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        return;
-      }
+      if (status !== "granted") return;
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -430,19 +382,13 @@ export default function ChatScreen() {
     [uploadImageAndSend]
   );
 
-  // Voice message handling
   const uploadVoiceAndSend = useCallback(
     async (uri: string, voiceDuration: number) => {
       setIsSendingVoice(true);
       try {
         const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL!;
-
         const formData = new FormData();
-        formData.append("audio", {
-          uri,
-          type: "audio/m4a",
-          name: "voice.m4a",
-        } as unknown as Blob);
+        formData.append("audio", { uri, type: "audio/m4a", name: "voice.m4a" } as unknown as Blob);
 
         const uploadResponse = await fetch(`${baseUrl}/api/uploads/voice`, {
           method: "POST",
@@ -450,16 +396,11 @@ export default function ChatScreen() {
           credentials: "include",
         });
 
-        if (!uploadResponse.ok) {
-          throw new Error("Voice upload failed");
-        }
+        if (!uploadResponse.ok) throw new Error("Voice upload failed");
 
-        const uploadResult = await uploadResponse.json() as { data?: { url?: string } };
+        const uploadResult = (await uploadResponse.json()) as { data?: { url?: string } };
         const voiceUrl = uploadResult.data?.url;
-
-        if (!voiceUrl) {
-          throw new Error("No voice URL returned");
-        }
+        if (!voiceUrl) throw new Error("No voice URL returned");
 
         await api.post<Message>(`/api/matches/${matchId}/messages`, {
           content: "Sesli mesaj",
@@ -517,19 +458,18 @@ export default function ChatScreen() {
 
   const renderMessage = useCallback(
     ({ item, index }: { item: Message | { type: "separator"; date: string }; index: number }) => {
-      // Date separator
       if ("type" in item && item.type === "separator") {
         return (
           <View style={{ alignItems: "center", marginVertical: 16 }}>
             <View
               style={{
-                backgroundColor: "rgba(0,0,0,0.06)",
+                backgroundColor: "rgba(255,255,255,0.06)",
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderRadius: 12,
               }}
             >
-              <Text style={{ color: "#8E8E93", fontSize: 12, fontWeight: "600" }}>
+              <Text style={{ color: Colors.textOnDarkMuted, fontSize: 12, fontFamily: "DMSans_600SemiBold" }}>
                 {item.date}
               </Text>
             </View>
@@ -549,6 +489,9 @@ export default function ChatScreen() {
       const isEphemeral = msg.messageType === "ephemeral_photo";
       const hasViewed = viewedEphemeralIds.has(msg.id);
 
+      const bubbleBg = isMe ? Colors.primary : Colors.cardDark;
+      const bubbleText = Colors.white;
+
       return (
         <View
           style={{
@@ -559,62 +502,29 @@ export default function ChatScreen() {
           }}
         >
           {!isMe && isLastInGroup ? (
-            partnerPhotos.length > 0 ? (
-              <Image
-                source={{ uri: partnerPhotos[0] }}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  marginRight: 8,
-                  alignSelf: "flex-end",
-                }}
-              />
-            ) : (
-              <LinearGradient
-                colors={[pc1, pc2]}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: 8,
-                  alignSelf: "flex-end",
-                }}
-              >
-                <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
-                  {partner?.name[0]?.toUpperCase()}
-                </Text>
-              </LinearGradient>
-            )
+            <View style={{ marginRight: 8, alignSelf: "flex-end" }}>
+              <UMAvatar uri={partnerPhotos[0]} size="sm" fallback={partner?.name} />
+            </View>
           ) : !isMe ? (
-            <View style={{ width: 36 }} />
+            <View style={{ width: 44 }} />
           ) : null}
 
           <View style={{ maxWidth: "72%" }}>
-            {/* Photo message */}
             {isPhoto ? (
-              <Pressable
-                onPress={() => {
-                  // Allow tapping to view full screen if needed (no restriction for regular photos)
-                }}
-                testID={`photo-message-${msg.id}`}
-              >
+              <Pressable testID={`photo-message-${msg.id}`}>
                 <Image
                   source={{ uri: msg.content }}
                   style={{
                     width: 200,
                     height: 200,
-                    borderRadius: 16,
-                    borderBottomRightRadius: isMe && isLastInGroup ? 4 : 16,
-                    borderBottomLeftRadius: !isMe && isLastInGroup ? 4 : 16,
+                    borderRadius: 22,
+                    borderBottomRightRadius: isMe && isLastInGroup ? 6 : 22,
+                    borderBottomLeftRadius: !isMe && isLastInGroup ? 6 : 22,
                   }}
                   resizeMode="cover"
                 />
               </Pressable>
             ) : isEphemeral ? (
-              // Ephemeral photo message
               <Pressable
                 onPress={() => handleEphemeralTap(msg)}
                 testID={`ephemeral-message-${msg.id}`}
@@ -625,40 +535,40 @@ export default function ChatScreen() {
                     style={{
                       paddingHorizontal: 14,
                       paddingVertical: 12,
-                      borderRadius: 18,
-                      borderBottomRightRadius: isMe && isLastInGroup ? 4 : 18,
-                      borderBottomLeftRadius: !isMe && isLastInGroup ? 4 : 18,
-                      backgroundColor: isMe ? "#F3D0D5" : "#E8E8E8",
+                      borderRadius: 22,
+                      borderBottomRightRadius: isMe && isLastInGroup ? 6 : 22,
+                      borderBottomLeftRadius: !isMe && isLastInGroup ? 6 : 22,
+                      backgroundColor: isMe ? "rgba(124,111,247,0.3)" : Colors.surfaceDark,
                       flexDirection: "row",
                       alignItems: "center",
                       gap: 8,
                     }}
                   >
-                    <Eye size={16} color={isMe ? "#E8445A" : "#8E8E93"} />
-                    <Text style={{ color: isMe ? "#E8445A" : "#8E8E93", fontSize: 14 }}>
+                    <Ionicons name="eye-outline" size={16} color={Colors.textOnDarkMuted} />
+                    <Text style={{ color: Colors.textOnDarkMuted, fontSize: 14, fontFamily: "DMSans_500Medium" }}>
                       Görüntülendi
                     </Text>
                   </View>
                 ) : (
                   <LinearGradient
-                    colors={isMe ? ["#E8445A", "#FF5E73"] : ["#FF6B35", "#FF8C55"]}
+                    colors={[Colors.coral, Colors.primary]}
                     style={{
                       paddingHorizontal: 14,
                       paddingVertical: 12,
-                      borderRadius: 18,
-                      borderBottomRightRadius: isMe && isLastInGroup ? 4 : 18,
-                      borderBottomLeftRadius: !isMe && isLastInGroup ? 4 : 18,
+                      borderRadius: 22,
+                      borderBottomRightRadius: isMe && isLastInGroup ? 6 : 22,
+                      borderBottomLeftRadius: !isMe && isLastInGroup ? 6 : 22,
                       flexDirection: "row",
                       alignItems: "center",
                       gap: 8,
                     }}
                   >
-                    <Flame size={18} color="#fff" />
+                    <Ionicons name="flame-outline" size={18} color={Colors.white} />
                     <View>
-                      <Text style={{ color: "#fff", fontSize: 14, fontWeight: "600" }}>
+                      <Text style={{ color: Colors.white, fontSize: 14, fontFamily: "DMSans_600SemiBold" }}>
                         Fotoğraf
                       </Text>
-                      <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 11 }}>
+                      <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontFamily: "DMSans_400Regular" }}>
                         Bir kez görüntülenebilir
                       </Text>
                     </View>
@@ -666,33 +576,27 @@ export default function ChatScreen() {
                 )}
               </Pressable>
             ) : (
-              // Text or voice message
               <View
                 style={{
                   paddingHorizontal: 14,
                   paddingVertical: 10,
-                  borderRadius: 18,
-                  borderBottomRightRadius: isMe && isLastInGroup ? 4 : 18,
-                  borderBottomLeftRadius: !isMe && isLastInGroup ? 4 : 18,
-                  backgroundColor: isMe ? "#E8445A" : "#F0F0F0",
+                  borderRadius: 22,
+                  borderBottomRightRadius: isMe && isLastInGroup ? 6 : 22,
+                  borderBottomLeftRadius: !isMe && isLastInGroup ? 6 : 22,
+                  backgroundColor: bubbleBg,
                   minWidth: msg.messageType === "voice" ? 180 : undefined,
                 }}
               >
                 {msg.messageType === "voice" && msg.voiceUrl ? (
-                  <VoiceMessagePlayer
-                    voiceUrl={msg.voiceUrl}
-                    duration={msg.voiceDuration ?? 0}
-                    isMe={isMe}
-                  />
+                  <VoiceMessagePlayer voiceUrl={msg.voiceUrl} duration={msg.voiceDuration ?? 0} isMe={isMe} />
                 ) : (
-                  <Text style={{ color: isMe ? "#FFFFFF" : "#1A1A1A", fontSize: 15, lineHeight: 21 }}>
+                  <Text style={{ color: bubbleText, fontSize: 15, fontFamily: "DMSans_400Regular", lineHeight: 21 }}>
                     {msg.content}
                   </Text>
                 )}
               </View>
             )}
 
-            {/* Time and read receipt */}
             {isLastInGroup ? (
               <View
                 style={{
@@ -704,14 +608,14 @@ export default function ChatScreen() {
                   paddingHorizontal: 4,
                 }}
               >
-                <Text style={{ color: "#6B7280", fontSize: 11 }}>
+                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 11, fontFamily: "DMSans_400Regular" }}>
                   {formatMessageTime(msg.createdAt)}
                 </Text>
-                {isMe ? <CheckCheck size={14} color="#4CD964" /> : null}
+                {isMe ? <Ionicons name="checkmark-done" size={14} color={Colors.primaryLight} /> : null}
               </View>
             ) : null}
             {isMe && msg.readAt && isPremiumAsk ? (
-              <Text style={{ color: "#9CA3AF", fontSize: 10, textAlign: "right", marginTop: 2 }}>
+              <Text style={{ color: Colors.textOnDarkMuted, fontSize: 10, fontFamily: "DMSans_400Regular", textAlign: "right", marginTop: 2 }}>
                 Görüldü
               </Text>
             ) : null}
@@ -719,14 +623,15 @@ export default function ChatScreen() {
         </View>
       );
     },
-    [myProfile, partner, partnerPhotos, pc1, pc2, messagesWithSeparators, viewedEphemeralIds, handleEphemeralTap, isPremiumAsk]
+    [myProfile, partner, partnerPhotos, messagesWithSeparators, viewedEphemeralIds, handleEphemeralTap, isPremiumAsk]
   );
 
   const isEmpty = !isLoading && (messages?.length ?? 0) === 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8F8F8" }} testID="chat-screen">
-      {/* Ephemeral photo viewer overlay */}
+    <View style={{ flex: 1, backgroundColor: Colors.bgDark }} testID="chat-screen">
+      <StatusBar barStyle="light-content" />
+
       {ephemeralViewerUri ? (
         <EphemeralPhotoViewer uri={ephemeralViewerUri} onClose={handleCloseEphemeral} />
       ) : null}
@@ -739,85 +644,86 @@ export default function ChatScreen() {
           paddingHorizontal: 16,
           flexDirection: "row",
           alignItems: "center",
+          backgroundColor: Colors.bgDark,
           borderBottomWidth: 1,
-          borderBottomColor: "rgba(0,0,0,0.06)",
-          backgroundColor: "#FFFFFF",
+          borderBottomColor: "rgba(255,255,255,0.06)",
         }}
       >
         <Pressable
           testID="back-button"
           onPress={() => router.back()}
           style={({ pressed }) => ({
-            opacity: pressed ? 0.7 : 1,
-            marginRight: 12,
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: Colors.surfaceDark,
             alignItems: "center",
             justifyContent: "center",
+            marginRight: 12,
+            opacity: pressed ? 0.7 : 1,
           })}
         >
-          <ChevronLeft size={24} color="#1A1A1A" />
+          <Ionicons name="arrow-back-outline" size={20} color={Colors.textOnDark} />
         </Pressable>
         {partner ? (
-          partnerPhotos.length > 0 ? (
-            <Image
-              source={{ uri: partnerPhotos[0] }}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                marginRight: 12,
-                borderWidth: 2,
-                borderColor: "#E8445A",
-              }}
-            />
-          ) : (
-            <LinearGradient
-              colors={[pc1, pc2]}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: 12,
-              }}
-            >
-              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
-                {partner.name[0]?.toUpperCase()}
-              </Text>
-            </LinearGradient>
-          )
+          <View style={{ marginRight: 12 }}>
+            <UMAvatar uri={partnerPhotos[0]} size="md" fallback={partner.name} />
+          </View>
         ) : null}
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text style={{ color: "#1A1A1A", fontSize: 17, fontWeight: "700" }}>
-              {partner?.name ?? "..."}
-            </Text>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#4CD964" }} />
-          </View>
-          <Text style={{ color: isTyping ? "#4CD964" : "#6B7280", fontSize: 12 }}>
-            {isTyping ? "Yazıyor..." : "Online"}
+          <Text style={{ color: Colors.textOnDark, fontSize: 17, fontFamily: "DMSans_700Bold" }}>
+            {partner?.name ?? "..."}
           </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#4CD964" }} />
+            <Text style={{ color: isTyping ? "#4CD964" : Colors.textOnDarkMuted, fontSize: 12, fontFamily: "DMSans_500Medium" }}>
+              {isTyping ? "Yazıyor..." : "Online"}
+            </Text>
+          </View>
         </View>
         <Pressable
           testID="more-button"
           style={({ pressed }) => ({
-            opacity: pressed ? 0.7 : 1,
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
             alignItems: "center",
             justifyContent: "center",
+            opacity: pressed ? 0.7 : 1,
           })}
         >
-          <MoreVertical size={20} color="#6B7280" />
+          <Ionicons name="ellipsis-horizontal-outline" size={20} color={Colors.textOnDarkMuted} />
         </Pressable>
       </View>
+
+      {/* Expiry banner */}
+      {isExpiringSoon ? (
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginTop: 12,
+            backgroundColor: "rgba(232,99,90,0.15)",
+            borderRadius: 14,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            borderWidth: 1,
+            borderColor: "rgba(232,99,90,0.3)",
+          }}
+        >
+          <Ionicons name="time-outline" size={16} color={Colors.coral} />
+          <Text style={{ color: Colors.coral, fontSize: 13, fontFamily: "DMSans_600SemiBold", flex: 1 }}>
+            Bu eşleşme {expiryHours} saat içinde sona eriyor
+          </Text>
+        </View>
+      ) : null}
 
       {/* Messages */}
       {isLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color="#E8445A" testID="loading-indicator" />
+          <ActivityIndicator color={Colors.primary} testID="loading-indicator" />
         </View>
       ) : (
         <FlatList
@@ -835,20 +741,20 @@ export default function ChatScreen() {
                 style={{
                   marginHorizontal: 16,
                   marginBottom: 16,
-                  backgroundColor: "rgba(124,58,237,0.08)",
-                  borderRadius: 14,
+                  backgroundColor: Colors.surfaceDark,
+                  borderRadius: Radius.card,
                   padding: 16,
                   borderWidth: 1,
-                  borderColor: "rgba(124,58,237,0.2)",
+                  borderColor: "rgba(124,111,247,0.25)",
                 }}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 }}>
-                  <Snowflake size={12} color="#FF5E73" />
-                  <Text style={{ color: "#FF5E73", fontSize: 12, fontWeight: "700", letterSpacing: 0.5 }}>
-                    BASLATICI SORU
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <Ionicons name="sparkles-outline" size={14} color={Colors.primaryLight} />
+                  <Text style={{ color: Colors.primaryLight, fontSize: 12, fontFamily: "DMSans_700Bold", letterSpacing: 0.5 }}>
+                    BAŞLATICI SORU
                   </Text>
                 </View>
-                <Text style={{ color: "#1A1A1A", fontSize: 15, lineHeight: 22 }}>
+                <Text style={{ color: Colors.textOnDark, fontSize: 15, fontFamily: "DMSans_400Regular", lineHeight: 22 }}>
                   {match.iceBreakerQuestion}
                 </Text>
               </View>
@@ -856,46 +762,16 @@ export default function ChatScreen() {
           }
           ListEmptyComponent={
             isEmpty ? (
-              <View
-                style={{ alignItems: "center", paddingTop: 32, paddingHorizontal: 24 }}
-                testID="empty-chat-state"
-              >
-                {partnerPhotos.length > 0 ? (
-                  <Image
-                    source={{ uri: partnerPhotos[0] }}
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 36,
-                      marginBottom: 12,
-                      borderWidth: 3,
-                      borderColor: "#E8445A",
-                    }}
-                  />
-                ) : (
-                  <LinearGradient
-                    colors={[pc1, pc2]}
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 36,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginBottom: 12,
-                    }}
-                  >
-                    <Text style={{ color: "#fff", fontSize: 28, fontWeight: "700" }}>
-                      {partner?.name[0]?.toUpperCase() ?? "?"}
-                    </Text>
-                  </LinearGradient>
-                )}
-                <Text style={{ color: "#1A1A1A", fontSize: 17, fontWeight: "700", marginBottom: 4 }}>
+              <View style={{ alignItems: "center", paddingTop: 32, paddingHorizontal: 24 }} testID="empty-chat-state">
+                <View style={{ marginBottom: 12 }}>
+                  <UMAvatar uri={partnerPhotos[0]} size="xl" ring fallback={partner?.name ?? "?"} />
+                </View>
+                <Text style={{ color: Colors.textOnDark, fontSize: 20, fontFamily: "DMSerifDisplay_400Regular", marginBottom: 4 }}>
                   {partner?.name ?? "Eşleşmen"} ile eşleştin!
                 </Text>
-                <Text style={{ color: "#6B7280", fontSize: 14, textAlign: "center", marginBottom: 20 }}>
+                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 14, fontFamily: "DMSans_400Regular", textAlign: "center", marginBottom: 24 }}>
                   İlk adımı at, tanışmaya başla 💬
                 </Text>
-                {/* Conversation starters */}
                 <View style={{ width: "100%", gap: 8 }} testID="conversation-starters">
                   {CONVERSATION_STARTERS.map((starter, idx) => (
                     <Pressable
@@ -904,16 +780,16 @@ export default function ChatScreen() {
                       onPress={() => handleStarterTap(starter)}
                       disabled={isSending}
                       style={({ pressed }) => ({
-                        backgroundColor: pressed ? "#F3D0D5" : "#FFFFFF",
-                        borderRadius: 16,
+                        backgroundColor: pressed ? Colors.cardDark : Colors.surfaceDark,
+                        borderRadius: Radius.card,
                         paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        borderWidth: 1.5,
-                        borderColor: "#E8445A",
+                        paddingVertical: 14,
+                        borderWidth: 1,
+                        borderColor: "rgba(124,111,247,0.3)",
                         opacity: isSending ? 0.6 : 1,
                       })}
                     >
-                      <Text style={{ color: "#E8445A", fontSize: 14, fontWeight: "500", textAlign: "center" }}>
+                      <Text style={{ color: Colors.textOnDark, fontSize: 14, fontFamily: "DMSans_500Medium", textAlign: "center" }}>
                         {starter}
                       </Text>
                     </Pressable>
@@ -926,22 +802,18 @@ export default function ChatScreen() {
       )}
 
       {/* Input */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
         <View
           style={{
             paddingHorizontal: 12,
             paddingVertical: 10,
             paddingBottom: insets.bottom + 10,
+            backgroundColor: Colors.surfaceDark,
             borderTopWidth: 1,
-            borderTopColor: "rgba(0,0,0,0.06)",
-            backgroundColor: "#FFFFFF",
+            borderTopColor: "rgba(255,255,255,0.06)",
           }}
         >
           {isRecording ? (
-            // Recording UI
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Pressable
                 testID="cancel-recording-button"
@@ -950,19 +822,19 @@ export default function ChatScreen() {
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  backgroundColor: "#F2F2F7",
+                  backgroundColor: Colors.cardDark,
                   alignItems: "center",
                   justifyContent: "center",
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <X size={20} color="#8E8E93" />
+                <Ionicons name="close-outline" size={20} color={Colors.textOnDarkMuted} />
               </Pressable>
 
               <View
                 style={{
                   flex: 1,
-                  backgroundColor: "#FFF0F2",
+                  backgroundColor: "rgba(232,99,90,0.15)",
                   borderRadius: 22,
                   paddingHorizontal: 16,
                   paddingVertical: 12,
@@ -970,14 +842,14 @@ export default function ChatScreen() {
                   alignItems: "center",
                   gap: 8,
                   borderWidth: 1,
-                  borderColor: "#E8445A",
+                  borderColor: Colors.coral,
                 }}
               >
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#E8445A" }} />
-                <Text style={{ color: "#E8445A", fontSize: 16, fontWeight: "600" }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.coral }} />
+                <Text style={{ color: Colors.coral, fontSize: 16, fontFamily: "DMSans_600SemiBold" }}>
                   {Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, "0")}
                 </Text>
-                <Text style={{ color: "#8E8E93", fontSize: 13 }}>Kayıt ediliyor...</Text>
+                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 13, fontFamily: "DMSans_400Regular" }}>Kayıt ediliyor...</Text>
               </View>
 
               <Pressable
@@ -985,32 +857,24 @@ export default function ChatScreen() {
                 onPress={handleVoiceRecord}
                 disabled={isSendingVoice}
                 style={({ pressed }) => ({
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: Colors.primary,
+                  alignItems: "center",
+                  justifyContent: "center",
                   opacity: pressed || isSendingVoice ? 0.7 : 1,
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
                 })}
               >
-                <LinearGradient
-                  colors={["#E8445A", "#FF5E73"]}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {isSendingVoice ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Send size={18} color="#fff" style={{ marginLeft: 2 }} />
-                  )}
-                </LinearGradient>
+                {isSendingVoice ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Ionicons name="send" size={18} color={Colors.white} style={{ marginLeft: 2 }} />
+                )}
               </Pressable>
             </View>
           ) : (
-            // Normal input row
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-              {/* Photo buttons (only show when not typing) */}
               {!text.trim() ? (
                 <>
                   <Pressable
@@ -1021,16 +885,16 @@ export default function ChatScreen() {
                       width: 38,
                       height: 38,
                       borderRadius: 19,
-                      backgroundColor: "#F2F2F7",
+                      backgroundColor: Colors.cardDark,
                       alignItems: "center",
                       justifyContent: "center",
                       opacity: pressed || isUploadingPhoto ? 0.7 : 1,
                     })}
                   >
                     {isUploadingPhoto ? (
-                      <ActivityIndicator size="small" color="#E8445A" />
+                      <ActivityIndicator size="small" color={Colors.primaryLight} />
                     ) : (
-                      <ImageIcon size={18} color="#E8445A" />
+                      <Ionicons name="image-outline" size={18} color={Colors.primaryLight} />
                     )}
                   </Pressable>
                   <Pressable
@@ -1041,13 +905,13 @@ export default function ChatScreen() {
                       width: 38,
                       height: 38,
                       borderRadius: 19,
-                      backgroundColor: "#FFF0EB",
+                      backgroundColor: "rgba(232,99,90,0.18)",
                       alignItems: "center",
                       justifyContent: "center",
                       opacity: pressed || isUploadingPhoto ? 0.7 : 1,
                     })}
                   >
-                    <Flame size={18} color="#FF6B35" />
+                    <Ionicons name="flame-outline" size={18} color={Colors.coral} />
                   </Pressable>
                 </>
               ) : null}
@@ -1057,17 +921,18 @@ export default function ChatScreen() {
                 value={text}
                 onChangeText={setText}
                 placeholder="Mesaj yaz..."
-                placeholderTextColor="#C7C7CC"
+                placeholderTextColor={Colors.textOnDarkMuted}
                 multiline
                 maxLength={500}
                 style={{
                   flex: 1,
-                  backgroundColor: "#F2F2F7",
-                  borderRadius: 22,
+                  backgroundColor: Colors.cardDark,
+                  borderRadius: 24,
                   paddingHorizontal: 16,
                   paddingVertical: 10,
-                  color: "#1A1A1A",
+                  color: Colors.textOnDark,
                   fontSize: 15,
+                  fontFamily: "DMSans_400Regular",
                   maxHeight: 120,
                 }}
               />
@@ -1078,44 +943,32 @@ export default function ChatScreen() {
                   onPress={handleSend}
                   disabled={isSending}
                   style={({ pressed }) => ({
-                    opacity: pressed || isSending ? 0.5 : 1,
-                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: Colors.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: pressed || isSending ? 0.6 : 1,
                   })}
                 >
-                  <LinearGradient
-                    colors={["#E8445A", "#FF5E73"]}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Send size={18} color="#fff" style={{ marginLeft: 2 }} />
-                  </LinearGradient>
+                  <Ionicons name="send" size={18} color={Colors.white} style={{ marginLeft: 2 }} />
                 </Pressable>
               ) : (
                 <Pressable
                   testID="mic-button"
                   onPress={handleVoiceRecord}
                   style={({ pressed }) => ({
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: Colors.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
                     opacity: pressed ? 0.7 : 1,
-                    transform: [{ scale: pressed ? 0.95 : 1 }],
                   })}
                 >
-                  <LinearGradient
-                    colors={["#E8445A", "#FF5E73"]}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Mic size={20} color="#fff" />
-                  </LinearGradient>
+                  <Ionicons name="mic-outline" size={20} color={Colors.white} />
                 </Pressable>
               )}
             </View>

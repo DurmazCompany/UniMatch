@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -6,35 +6,22 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Image,
   TextInput,
+  StatusBar,
 } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/lib/api/api";
 import { Match, Profile } from "@/lib/types";
 import { useSession } from "@/lib/auth/use-session";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { theme, useTheme } from "@/lib/theme";
-import { Search, SlidersHorizontal, CheckCheck } from "lucide-react-native";
+import { Colors, Radius, Spacing } from "@/lib/theme";
+import { UMAvatar, UMCard, TabSelector } from "@/components/ui";
 import { useScreenProtection } from "@/lib/hooks/useScreenProtection";
-
-function getProfileColor(id: string): [string, string] {
-  const colors: [string, string][] = [
-    [theme.primary, "#FF5E73"],
-    ["#059669", "#34D399"],
-    ["#3B82F6", "#60A5FA"],
-    ["#D97706", "#FCD34D"],
-    ["#8B5CF6", "#A78BFA"],
-    ["#DB2777", "#F472B6"],
-  ];
-  const idx = id.charCodeAt(0) % colors.length;
-  return colors[idx];
-}
 
 function getPartnerProfile(match: Match, myUserId: string): Profile {
   return match.user1.userId === myUserId ? match.user2 : match.user1;
@@ -49,13 +36,12 @@ function parsePhotos(photos: string | string[]): string[] {
   }
 }
 
-// Seeded random for stable online status per match id
 function isOnline(id: string): boolean {
   const n = id.charCodeAt(id.length - 1) + id.charCodeAt(0);
   return n % 3 !== 0;
 }
 
-function OnlineDot({ size = 12, borderWidth = 2 }: { size?: number; borderWidth?: number }) {
+function OnlineDot({ size = 12 }: { size?: number }) {
   return (
     <View
       style={{
@@ -65,18 +51,16 @@ function OnlineDot({ size = 12, borderWidth = 2 }: { size?: number; borderWidth?
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: theme.online,
-        borderWidth,
-        borderColor: theme.background,
+        backgroundColor: "#4CD964",
+        borderWidth: 2.5,
+        borderColor: Colors.bgDark,
       }}
     />
   );
 }
 
-// Circular match card for "Yeni Eşleşmeler" horizontal row
 function NewMatchCircle({ match, myUserId }: { match: Match; myUserId: string }) {
   const partner = getPartnerProfile(match, myUserId);
-  const [c1, c2] = getProfileColor(partner.id);
   const photos = parsePhotos(partner.photos);
   const online = isOnline(match.id);
 
@@ -90,55 +74,12 @@ function NewMatchCircle({ match, myUserId }: { match: Match; myUserId: string })
         opacity: pressed ? 0.75 : 1,
       })}
     >
-      {/* Pink gradient ring */}
-      <View style={{ position: "relative", marginBottom: 6 }}>
-        <LinearGradient
-          colors={[theme.primary, "#FF5E73", "#FF8C94"]}
-          style={{
-            width: 68,
-            height: 68,
-            borderRadius: 34,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 2.5,
-          }}
-        >
-          {photos.length > 0 ? (
-            <Image
-              source={{ uri: photos[0] }}
-              style={{
-                width: 62,
-                height: 62,
-                borderRadius: 31,
-                borderWidth: 2,
-                borderColor: theme.background,
-              }}
-            />
-          ) : (
-            <LinearGradient
-              colors={[c1, c2]}
-              style={{
-                width: 62,
-                height: 62,
-                borderRadius: 31,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 2,
-                borderColor: theme.background,
-              }}
-            >
-              <Text style={{ color: "#fff", fontSize: 24, fontWeight: "700" }}>
-                {partner.name[0]?.toUpperCase()}
-              </Text>
-            </LinearGradient>
-          )}
-        </LinearGradient>
-
-        {online ? <OnlineDot size={13} borderWidth={2} /> : null}
+      <View style={{ position: "relative", marginBottom: 8 }}>
+        <UMAvatar uri={photos[0]} size="lg" ring fallback={partner.name} />
+        {online ? <OnlineDot size={14} /> : null}
       </View>
-
       <Text
-        style={{ color: theme.textPrimary, fontSize: 12, fontWeight: "500", textAlign: "center" }}
+        style={{ color: Colors.textOnDark, fontSize: 13, fontFamily: "DMSans_500Medium", textAlign: "center" }}
         numberOfLines={1}
       >
         {partner.name.split(" ")[0]}
@@ -147,11 +88,9 @@ function NewMatchCircle({ match, myUserId }: { match: Match; myUserId: string })
   );
 }
 
-// Conversation row for "Mesajlar" vertical list
 function ConversationRow({ match, myUserId, onExtend }: { match: Match; myUserId: string; onExtend?: (matchId: string) => void }) {
   const partner = getPartnerProfile(match, myUserId);
   const myProfile = match.user1.userId === myUserId ? match.user1 : match.user2;
-  const [c1, c2] = getProfileColor(partner.id);
   const photos = parsePhotos(partner.photos);
   const online = isOnline(match.id);
   const lastMessage = match.messages[0];
@@ -161,114 +100,88 @@ function ConversationRow({ match, myUserId, onExtend }: { match: Match; myUserId
     ? formatDistanceToNow(new Date(lastMessage.createdAt), { locale: tr, addSuffix: false })
     : formatDistanceToNow(new Date(match.matchedAt), { locale: tr, addSuffix: false });
 
-  const isExpiringSoon = match.expiresAt && (new Date(match.expiresAt).getTime() - Date.now()) < 6 * 60 * 60 * 1000;
+  const isExpiringSoon = match.expiresAt && (new Date(match.expiresAt).getTime() - Date.now()) < 24 * 60 * 60 * 1000;
 
   return (
     <Pressable
       onPress={() => router.push(`/(app)/chat/${match.id}`)}
       testID={`conversation-${match.id}`}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        backgroundColor: pressed ? "rgba(255,255,255,0.03)" : "transparent",
-      })}
+      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1, marginHorizontal: 16, marginBottom: 10 })}
     >
-      {/* Avatar with online dot */}
-      <View style={{ position: "relative", marginRight: 14 }}>
-        {photos.length > 0 ? (
-          <Image
-            source={{ uri: photos[0] }}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-            }}
-          />
-        ) : (
-          <LinearGradient
-            colors={[c1, c2]}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ color: "#fff", fontSize: 22, fontWeight: "700" }}>
-              {partner.name[0]?.toUpperCase()}
-            </Text>
-          </LinearGradient>
-        )}
-        {online ? <OnlineDot size={14} borderWidth={2} /> : null}
-      </View>
+      <UMCard dark>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View style={{ position: "relative", marginRight: 14 }}>
+            <UMAvatar uri={photos[0]} size="md" fallback={partner.name} />
+            {online ? <OnlineDot size={12} /> : null}
+          </View>
 
-      {/* Text content */}
-      <View style={{ flex: 1 }}>
-        {/* Name + time */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 3,
-          }}
-        >
-          <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700" }}>
-            {partner.name}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            {isExpiringSoon && onExtend ? (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onExtend(match.id);
-                }}
-                testID={`extend-match-${match.id}`}
-                style={{
-                  backgroundColor: "rgba(212,83,126,0.1)",
-                  borderRadius: 12,
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderWidth: 1,
-                  borderColor: "rgba(212,83,126,0.3)",
-                }}
+          <View style={{ flex: 1 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 4,
+              }}
+            >
+              <Text style={{ color: Colors.textOnDark, fontSize: 15, fontFamily: "DMSans_700Bold" }}>
+                {partner.name}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {isExpiringSoon && onExtend ? (
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onExtend(match.id);
+                    }}
+                    testID={`extend-match-${match.id}`}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                      backgroundColor: "rgba(124,111,247,0.15)",
+                      borderRadius: Radius.tag,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderWidth: 1,
+                      borderColor: Colors.primary,
+                    }}
+                  >
+                    <Ionicons name="calendar-outline" size={12} color={Colors.primaryLight} />
+                    <Text style={{ color: Colors.primaryLight, fontSize: 11, fontFamily: "DMSans_700Bold" }}>+5 Gün</Text>
+                  </Pressable>
+                ) : null}
+                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 12, fontFamily: "DMSans_400Regular" }}>{timeAgo}</Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              {isMyMessage && lastMessage ? (
+                <Ionicons name="checkmark-done" size={14} color={Colors.primaryLight} style={{ marginRight: 4 }} />
+              ) : null}
+              <Text
+                style={{ color: Colors.textOnDarkMuted, fontSize: 13, fontFamily: "DMSans_400Regular", flex: 1 }}
+                numberOfLines={1}
               >
-                <Text style={{ color: theme.primary, fontSize: 12, fontWeight: "600" }}>+5 Gün</Text>
-              </Pressable>
-            ) : null}
-            <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{timeAgo}</Text>
+                {lastMessage ? lastMessage.content : "Sohbete başla!"}
+              </Text>
+            </View>
           </View>
         </View>
-
-        {/* Last message + read receipt */}
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          {isMyMessage && lastMessage ? (
-            <CheckCheck size={14} color={theme.primary} style={{ marginRight: 4 }} />
-          ) : null}
-          <Text
-            style={{ color: theme.textSecondary, fontSize: 13, flex: 1 }}
-            numberOfLines={1}
-          >
-            {lastMessage ? lastMessage.content : "Sohbete başla!"}
-          </Text>
-        </View>
-      </View>
+      </UMCard>
     </Pressable>
   );
 }
 
 export default function MatchesScreen() {
-  // 🔒 Match fotoğrafları ve eşleşme anını koru
   useScreenProtection();
 
-  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { data: session } = useSession();
   const myUserId = session?.user?.id ?? "";
   const queryClient = useQueryClient();
+  const [tab, setTab] = useState<"matches" | "messages">("messages");
+  const [search, setSearch] = useState("");
 
   const extendMutation = useMutation({
     mutationFn: (matchId: string) => api.post(`/api/matches/${matchId}/extend`, {}),
@@ -299,13 +212,11 @@ export default function MatchesScreen() {
 
   const allMatches = matches ?? [];
 
-  // "Yeni Eşleşmeler" = matches with no messages (or all if everything has messages)
   const newMatches = useMemo(() => {
     const withoutMessages = allMatches.filter((m) => m.messages.length === 0);
     return withoutMessages.length > 0 ? withoutMessages : allMatches.slice(0, 5);
   }, [allMatches]);
 
-  // "Mesajlar" = all matches sorted by last message time desc
   const conversations = useMemo(() => {
     return [...allMatches].sort((a, b) => {
       const aTime = a.messages[0]
@@ -328,78 +239,67 @@ export default function MatchesScreen() {
   if (isLoading) {
     return (
       <View
-        style={{
-          flex: 1,
-          backgroundColor: theme.background,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        style={{ flex: 1, backgroundColor: Colors.bgDark, alignItems: "center", justifyContent: "center" }}
         testID="matches-loading"
       >
-        <ActivityIndicator color={theme.primary} size="large" />
+        <StatusBar barStyle="light-content" />
+        <ActivityIndicator color={Colors.primary} size="large" />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }} testID="matches-screen">
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 10,
-          paddingHorizontal: 20,
-          paddingBottom: 12,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <Text style={{ color: theme.textPrimary, fontSize: 26, fontWeight: "800", letterSpacing: -0.5 }}>
-          UniMatch
+    <View style={{ flex: 1, backgroundColor: Colors.bgDark }} testID="matches-screen">
+      <StatusBar barStyle="light-content" />
+
+      {/* Title */}
+      <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 14 }}>
+        <Text style={{ color: Colors.textOnDark, fontSize: 32, fontFamily: "DMSerifDisplay_400Regular" }}>
+          Mesajlar
         </Text>
-        <Pressable
-          testID="filter-button"
-          style={({ pressed }) => ({
-            opacity: pressed ? 0.7 : 1,
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: theme.surface,
-            alignItems: "center",
-            justifyContent: "center",
-          })}
-        >
-          <SlidersHorizontal size={18} color={theme.textPrimary} />
-        </Pressable>
       </View>
 
       {/* Search bar */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+      <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: theme.surface,
-            borderRadius: 24,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            gap: 8,
+            backgroundColor: Colors.surfaceDark,
+            borderRadius: Radius.input,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            gap: 10,
           }}
         >
-          <Search size={16} color={theme.textSecondary} />
+          <Ionicons name="search-outline" size={18} color={Colors.textOnDarkMuted} />
           <TextInput
             placeholder="Ara..."
-            placeholderTextColor={theme.textSecondary}
-            editable={false}
+            placeholderTextColor={Colors.textOnDarkMuted}
+            value={search}
+            onChangeText={setSearch}
             style={{
               flex: 1,
-              color: theme.textPrimary,
+              color: Colors.textOnDark,
               fontSize: 15,
+              fontFamily: "DMSans_400Regular",
               padding: 0,
             }}
             testID="search-input"
           />
         </View>
+      </View>
+
+      {/* Tab selector */}
+      <View style={{ paddingHorizontal: 20, marginBottom: Spacing.xl }}>
+        <TabSelector
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "matches", label: "Eşleşmeler" },
+            { value: "messages", label: "Mesajlar" },
+          ]}
+        />
       </View>
 
       <FlatList
@@ -410,17 +310,15 @@ export default function MatchesScreen() {
         contentContainerStyle={{ paddingBottom: 110 }}
         ListHeaderComponent={
           <View>
-            {/* Yeni Eşleşmeler section */}
             {newMatches.length > 0 ? (
               <View style={{ marginBottom: 24 }}>
                 <Text
                   style={{
-                    color: theme.textPrimary,
+                    color: Colors.textOnDark,
                     fontSize: 17,
-                    fontWeight: "700",
+                    fontFamily: "DMSans_700Bold",
                     paddingHorizontal: 20,
                     marginBottom: 14,
-                    letterSpacing: -0.3,
                   }}
                 >
                   Yeni Eşleşmeler
@@ -438,26 +336,21 @@ export default function MatchesScreen() {
               </View>
             ) : null}
 
-            {/* Mesajlar section header */}
             {conversations.length > 0 ? (
               <View
                 style={{
                   paddingHorizontal: 20,
-                  paddingBottom: 10,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  paddingBottom: 12,
                 }}
               >
                 <Text
                   style={{
-                    color: theme.textPrimary,
+                    color: Colors.textOnDark,
                     fontSize: 17,
-                    fontWeight: "700",
-                    letterSpacing: -0.3,
+                    fontFamily: "DMSans_700Bold",
                   }}
                 >
-                  Mesajlar
+                  Sohbetler
                 </Text>
               </View>
             ) : null}
@@ -477,19 +370,19 @@ export default function MatchesScreen() {
                 width: 80,
                 height: 80,
                 borderRadius: 40,
-                backgroundColor: theme.surface,
+                backgroundColor: Colors.cardDark,
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 20,
               }}
             >
-              <Text style={{ fontSize: 36 }}>💬</Text>
+              <Ionicons name="chatbubbles-outline" size={36} color={Colors.primaryLight} />
             </View>
             <Text
               style={{
-                color: theme.textPrimary,
-                fontSize: 20,
-                fontWeight: "700",
+                color: Colors.textOnDark,
+                fontSize: 22,
+                fontFamily: "DMSerifDisplay_400Regular",
                 textAlign: "center",
                 marginBottom: 8,
               }}
@@ -498,8 +391,9 @@ export default function MatchesScreen() {
             </Text>
             <Text
               style={{
-                color: theme.textSecondary,
+                color: Colors.textOnDarkMuted,
                 fontSize: 14,
+                fontFamily: "DMSans_400Regular",
                 textAlign: "center",
                 lineHeight: 20,
               }}

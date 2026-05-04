@@ -6,24 +6,25 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
+  StatusBar,
 } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
 import { MatchModal } from "@/components/match/MatchModal";
 import { SwipeStack, SwipeStackRef } from "@/components/swipe/SwipeStack";
 import { api } from "@/lib/api/api";
 import { Profile, Match, SwipeResponse } from "@/lib/types";
 import { useSession } from "@/lib/auth/use-session";
-import { theme, gradients } from "@/lib/theme";
-import { Heart, X, Star, RotateCcw, SlidersHorizontal } from "lucide-react-native";
+import { Colors, Radius, Spacing } from "@/lib/theme";
+import { UMButton } from "@/components/ui";
 import { getZodiacSign, ZodiacSign } from "@/lib/astrology";
 
 const SWIPE_LIMIT = 10;
 
-// Zodiac filter chips: English sign name paired with display label
 const ZODIAC_FILTERS: { sign: ZodiacSign; label: string }[] = [
   { sign: "Aries", label: "Koç ♈" },
   { sign: "Taurus", label: "Boğa ♉" },
@@ -85,7 +86,6 @@ function FilterModal({
   const [localFilterYear, setLocalFilterYear] = useState<number | null>(initialFilters.filterYear);
   const [localLifestyle, setLocalLifestyle] = useState<"morning" | "night" | null>(initialFilters.lifestyle);
 
-  // Sync when modal opens
   useEffect(() => {
     if (visible) {
       setLocalZodiac(initialFilters.zodiacSigns);
@@ -125,6 +125,20 @@ function FilterModal({
     onClose();
   };
 
+  const chipBase = (selected: boolean) => ({
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: Radius.tag,
+    borderWidth: 1.5,
+    borderColor: selected ? Colors.primary : "rgba(255,255,255,0.08)",
+    backgroundColor: selected ? "rgba(124,111,247,0.18)" : Colors.cardDark,
+  });
+  const chipText = (selected: boolean) => ({
+    color: selected ? Colors.primaryLight : Colors.textOnDarkMuted,
+    fontFamily: selected ? "DMSans_700Bold" : "DMSans_500Medium",
+    fontSize: 14,
+  });
+
   return (
     <Modal
       visible={visible}
@@ -132,8 +146,7 @@ function FilterModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
-        {/* Header */}
+      <View style={{ flex: 1, backgroundColor: Colors.surfaceDark }}>
         <View
           style={{
             flexDirection: "row",
@@ -143,7 +156,7 @@ function FilterModal({
             paddingTop: insets.top + 16,
             paddingBottom: 16,
             borderBottomWidth: 1,
-            borderBottomColor: "#F0EAF0",
+            borderBottomColor: "rgba(255,255,255,0.06)",
           }}
         >
           <Pressable
@@ -151,15 +164,9 @@ function FilterModal({
             testID="filter-close-button"
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
-            <Text style={{ color: theme.textSecondary, fontSize: 16 }}>İptal</Text>
+            <Text style={{ color: Colors.textOnDarkMuted, fontSize: 16, fontFamily: "DMSans_500Medium" }}>İptal</Text>
           </Pressable>
-          <Text
-            style={{
-              color: theme.textPrimary,
-              fontSize: 17,
-              fontWeight: "700",
-            }}
-          >
+          <Text style={{ color: Colors.textOnDark, fontSize: 18, fontFamily: "DMSans_700Bold" }}>
             Filtrele
           </Text>
           <Pressable
@@ -167,7 +174,7 @@ function FilterModal({
             testID="filter-clear-button"
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
-            <Text style={{ color: theme.primary, fontSize: 16 }}>Temizle</Text>
+            <Text style={{ color: Colors.primaryLight, fontSize: 16, fontFamily: "DMSans_600SemiBold" }}>Temizle</Text>
           </Pressable>
         </View>
 
@@ -176,15 +183,7 @@ function FilterModal({
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Zodiac filter section */}
-          <Text
-            style={{
-              color: theme.textPrimary,
-              fontSize: 16,
-              fontWeight: "700",
-              marginBottom: 14,
-            }}
-          >
+          <Text style={{ color: Colors.textOnDark, fontSize: 16, fontFamily: "DMSans_700Bold", marginBottom: 14 }}>
             Burç
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 32 }}>
@@ -195,41 +194,15 @@ function FilterModal({
                   key={sign}
                   onPress={() => toggleZodiac(sign)}
                   testID={`zodiac-chip-${sign}`}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 14,
-                    paddingVertical: 9,
-                    borderRadius: 20,
-                    borderWidth: 1.5,
-                    borderColor: selected ? theme.primary : theme.borderDefault,
-                    backgroundColor: selected
-                      ? theme.primary + "22"
-                      : theme.surface,
-                    opacity: pressed ? 0.75 : 1,
-                  })}
+                  style={({ pressed }) => ({ ...chipBase(selected), opacity: pressed ? 0.75 : 1 })}
                 >
-                  <Text
-                    style={{
-                      color: selected ? theme.primary : theme.textSecondary,
-                      fontSize: 14,
-                      fontWeight: selected ? "700" : "400",
-                    }}
-                  >
-                    {label}
-                  </Text>
+                  <Text style={chipText(selected)}>{label}</Text>
                 </Pressable>
               );
             })}
           </View>
 
-          {/* Year filter section */}
-          <Text
-            style={{
-              color: theme.textPrimary,
-              fontSize: 16,
-              fontWeight: "700",
-              marginBottom: 14,
-            }}
-          >
+          <Text style={{ color: Colors.textOnDark, fontSize: 16, fontFamily: "DMSans_700Bold", marginBottom: 14 }}>
             Sınıf
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 32 }}>
@@ -240,83 +213,52 @@ function FilterModal({
                   key={value}
                   onPress={() => toggleYear(value)}
                   testID={`year-chip-${value}`}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 18,
-                    paddingVertical: 9,
-                    borderRadius: 20,
-                    borderWidth: 1.5,
-                    borderColor: selected ? theme.primary : theme.borderDefault,
-                    backgroundColor: selected
-                      ? theme.primary + "22"
-                      : theme.surface,
-                    opacity: pressed ? 0.75 : 1,
-                  })}
+                  style={({ pressed }) => ({ ...chipBase(selected), paddingHorizontal: 18, opacity: pressed ? 0.75 : 1 })}
                 >
-                  <Text
-                    style={{
-                      color: selected ? theme.primary : theme.textSecondary,
-                      fontSize: 14,
-                      fontWeight: selected ? "700" : "400",
-                    }}
-                  >
-                    {label}
-                  </Text>
+                  <Text style={chipText(selected)}>{label}</Text>
                 </Pressable>
               );
             })}
           </View>
 
-          {/* Yaşam Tarzı filter section */}
-          <Text
-            style={{
-              color: theme.textPrimary,
-              fontSize: 16,
-              fontWeight: "700",
-              marginBottom: 14,
-            }}
-          >
+          <Text style={{ color: Colors.textOnDark, fontSize: 16, fontFamily: "DMSans_700Bold", marginBottom: 14 }}>
             Yaşam Tarzı
           </Text>
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 32 }}>
             {[
               { value: "morning", label: "☀️ Sabahçı" },
               { value: "night", label: "🌙 Gece Kuşu" },
-            ].map(opt => (
-              <Pressable
-                key={opt.value}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setLocalLifestyle(localLifestyle === opt.value ? null : opt.value as "morning" | "night");
-                }}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  backgroundColor: localLifestyle === opt.value ? theme.primary : "#F8F4F6",
-                  borderWidth: 1,
-                  borderColor: localLifestyle === opt.value ? theme.primary : "#E8D8E0",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: localLifestyle === opt.value ? "#fff" : theme.textSecondary, fontWeight: "600" }}>
-                  {opt.label}
-                </Text>
-              </Pressable>
-            ))}
+            ].map(opt => {
+              const selected = localLifestyle === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setLocalLifestyle(selected ? null : opt.value as "morning" | "night");
+                  }}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: Radius.tag,
+                    backgroundColor: selected ? Colors.primary : Colors.cardDark,
+                    borderWidth: 1.5,
+                    borderColor: selected ? Colors.primary : "rgba(255,255,255,0.08)",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: selected ? Colors.white : Colors.textOnDarkMuted, fontFamily: "DMSans_600SemiBold", fontSize: 14 }}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          {/* Ortak Hobiler filter section */}
-          <Text
-            style={{
-              color: theme.textPrimary,
-              fontSize: 16,
-              fontWeight: "700",
-              marginBottom: 14,
-            }}
-          >
+          <Text style={{ color: Colors.textOnDark, fontSize: 16, fontFamily: "DMSans_700Bold", marginBottom: 14 }}>
             Ortak Hobiler
           </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {FILTER_HOBBIES.map(h => {
               const sel = localHobbies.includes(h.value);
               return (
@@ -327,53 +269,26 @@ function FilterModal({
                     if (sel) setLocalHobbies(prev => prev.filter(v => v !== h.value));
                     else setLocalHobbies(prev => [...prev, h.value]);
                   }}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 100,
-                    backgroundColor: sel ? "rgba(212,83,126,0.1)" : "#F8F4F6",
-                    borderWidth: 1,
-                    borderColor: sel ? theme.primary : "#E8D8E0",
-                  }}
+                  style={chipBase(sel)}
                 >
-                  <Text style={{ color: sel ? theme.primary : theme.textSecondary, fontSize: 13, fontWeight: "600" }}>
-                    {h.label}
-                  </Text>
+                  <Text style={chipText(sel)}>{h.label}</Text>
                 </Pressable>
               );
             })}
           </View>
         </ScrollView>
 
-        {/* Apply button */}
         <View
           style={{
             paddingHorizontal: 20,
             paddingBottom: insets.bottom + 20,
             paddingTop: 12,
             borderTopWidth: 1,
-            borderTopColor: "#F0EAF0",
+            borderTopColor: "rgba(255,255,255,0.06)",
           }}
         >
-          <Pressable
-            onPress={handleApply}
-            testID="filter-apply-button"
-            style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-          >
-            <LinearGradient
-              colors={gradients.button}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                paddingVertical: 16,
-                borderRadius: 14,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
-                Uygula
-              </Text>
-            </LinearGradient>
+          <Pressable onPress={handleApply} testID="filter-apply-button">
+            <UMButton variant="primary" label="Uygula" onPress={handleApply} />
           </Pressable>
         </View>
       </View>
@@ -409,7 +324,6 @@ export default function DiscoverScreen() {
   const { data: myProfile, isLoading: profileLoading } = useQuery<Profile | null>({
     queryKey: ["my-profile"],
     queryFn: async () => {
-      // Retry once with a small delay to handle cookie propagation race
       for (let attempt = 0; attempt < 2; attempt++) {
         if (attempt > 0) await new Promise(r => setTimeout(r, 800));
         try {
@@ -417,7 +331,6 @@ export default function DiscoverScreen() {
           return result ?? null;
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "";
-          // On auth error (401), retry — don't treat as "no profile"
           if (msg.includes("401") || msg.includes("Unauthorized")) continue;
           return null;
         }
@@ -432,8 +345,6 @@ export default function DiscoverScreen() {
   useEffect(() => {
     if (!isMounted.current) return;
     if (profileSettled && myProfile === null) {
-      // Only redirect to onboarding once per mount — prevents redirect loop
-      // after returning from onboarding before the query has re-fetched
       if (!redirectedToOnboarding.current) {
         redirectedToOnboarding.current = true;
         setProfileLoaded(true);
@@ -526,7 +437,6 @@ export default function DiscoverScreen() {
     setLastSwipeDirection(null);
   }, [lastSwipedProfile, undoSwipe]);
 
-  // Client-side filter application
   const filteredProfiles = profiles.filter((profile) => {
     const hasZodiacFilter = activeFilters.zodiacSigns.length > 0;
     const hasYearFilter = activeFilters.years.length > 0;
@@ -537,7 +447,6 @@ export default function DiscoverScreen() {
     }
 
     if (hasYearFilter) {
-      // Year 4 filter covers 4th year and above
       const profileYear = profile.year;
       if (activeFilters.years.includes(4)) {
         const matchesFourPlus = profileYear >= 4;
@@ -562,15 +471,9 @@ export default function DiscoverScreen() {
 
   if (profileLoading || (!profileLoaded && discoverLoading)) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#F8F4F6",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <ActivityIndicator color={theme.primary} size="large" />
+      <View style={{ flex: 1, backgroundColor: Colors.bgDark, alignItems: "center", justifyContent: "center" }}>
+        <StatusBar barStyle="light-content" />
+        <ActivityIndicator color={Colors.primary} size="large" />
       </View>
     );
   }
@@ -578,441 +481,252 @@ export default function DiscoverScreen() {
   const limitReached = swipesLeft <= 0;
   const hasProfiles = filteredProfiles.length > 0 && !limitReached;
 
-  return (
-    <View
-      style={{ flex: 1, backgroundColor: "#F8F4F6" }}
-      testID="discover-screen"
+  const filterButton = (
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setFilterVisible(true);
+      }}
+      testID="filter-button"
+      style={({ pressed }) => ({
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: Colors.surfaceDark,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.7 : 1,
+        borderWidth: hasActiveFilters ? 1.5 : 0,
+        borderColor: Colors.primary,
+      })}
     >
-      {hasProfiles ? (
-        <>
-          {/* Header */}
-          <View
-            style={{
-              paddingTop: insets.top + 8,
-              paddingHorizontal: 20,
-              paddingBottom: 10,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
+      <Ionicons
+        name="options-outline"
+        size={20}
+        color={hasActiveFilters ? Colors.primaryLight : Colors.textOnDark}
+      />
+      {hasActiveFilters ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 6,
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: Colors.primary,
+            borderWidth: 1.5,
+            borderColor: Colors.surfaceDark,
+          }}
+        />
+      ) : null}
+    </Pressable>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: Colors.bgDark }} testID="discover-screen">
+      <StatusBar barStyle="light-content" />
+      <Animated.View entering={FadeIn.duration(300)} style={{ flex: 1 }}>
+        {hasProfiles ? (
+          <>
+            {/* Header */}
+            <View
+              style={{
+                paddingTop: insets.top + 8,
+                paddingHorizontal: 20,
+                paddingBottom: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text style={{ color: Colors.textOnDark, fontSize: 28, fontFamily: "DMSerifDisplay_400Regular" }}>
+                Keşfet
+              </Text>
+              {filterButton}
+            </View>
+
+            {/* Card area */}
+            <View
+              style={{
+                flex: 1,
+                marginHorizontal: 16,
+                marginBottom: Spacing.sm,
+                borderRadius: Radius.card,
+                overflow: "hidden",
+              }}
+            >
+              <SwipeStack ref={swipeStackRef} profiles={filteredProfiles} onSwipe={handleSwipe} />
+            </View>
+
+            {/* Swipes left counter */}
             <Text
               style={{
-                color: theme.primary,
-                fontSize: 26,
-                fontWeight: "900",
-                letterSpacing: -0.5,
+                color: Colors.textOnDarkMuted,
+                fontSize: 12,
+                fontFamily: "DMSans_500Medium",
+                textAlign: "center",
+                marginBottom: 8,
               }}
             >
-              UniMatch
+              {swipesLeft} swipe kaldı
             </Text>
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setFilterVisible(true);
-              }}
-              testID="filter-button"
-              style={({ pressed }) => ({
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: hasActiveFilters ? theme.primary + "22" : theme.surface,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: pressed ? 0.7 : 1,
-                borderWidth: 1,
-                borderColor: hasActiveFilters ? theme.primary : theme.borderDefault,
-              })}
-            >
-              <SlidersHorizontal
-                size={18}
-                color={hasActiveFilters ? theme.primary : theme.textSecondary}
-              />
-              {/* Active filter dot */}
-              {hasActiveFilters ? (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 6,
-                    right: 6,
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: theme.primary,
-                    borderWidth: 1.5,
-                    borderColor: theme.surface,
-                  }}
-                />
-              ) : null}
-            </Pressable>
-          </View>
 
-          {/* Card area */}
+            {/* Action bar */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 16,
+                paddingHorizontal: 20,
+                paddingBottom: 100,
+                paddingTop: 8,
+              }}
+            >
+              {/* Rewind */}
+              <Pressable
+                onPress={handleRewind}
+                disabled={!lastSwipedProfile}
+                testID="rewind-button"
+                style={({ pressed }) => ({
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: Colors.cardDark,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: !lastSwipedProfile ? 0.4 : pressed ? 0.7 : 1,
+                })}
+              >
+                <Ionicons name="refresh-outline" size={22} color={Colors.textOnDark} />
+              </Pressable>
+
+              {/* Pass */}
+              <UMButton variant="swipe-no" onPress={() => handleActionButton("pass")} fullWidth={false} />
+
+              {/* Super-like */}
+              <Pressable
+                onPress={() => handleActionButton("super")}
+                testID="super-button"
+                style={({ pressed }) => ({
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: Colors.primaryPale,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Ionicons name="star" size={24} color={Colors.primary} />
+              </Pressable>
+
+              {/* Like */}
+              <View testID="like-button-wrap">
+                <UMButton variant="swipe-yes" onPress={() => handleActionButton("like")} fullWidth={false} />
+              </View>
+            </View>
+          </>
+        ) : (
+          /* Empty / limit reached state */
           <View
             style={{
               flex: 1,
-              marginHorizontal: 12,
-              marginBottom: 8,
-              borderRadius: 20,
-              overflow: "hidden",
-            }}
-          >
-            <SwipeStack ref={swipeStackRef} profiles={filteredProfiles} onSwipe={handleSwipe} />
-          </View>
-
-          {/* Swipes left counter */}
-          <Text
-            style={{
-              color: theme.textSecondary,
-              fontSize: 12,
-              textAlign: "center",
-              marginBottom: 6,
-            }}
-          >
-            {swipesLeft} swipe kaldı
-          </Text>
-
-          {/* Action bar */}
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: 14,
-              paddingHorizontal: 24,
-              paddingBottom: insets.bottom + 90,
-              paddingTop: 4,
-              backgroundColor: "#FFFFFF",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 8,
-              elevation: 4,
-            }}
-          >
-            {/* Rewind */}
-            <Pressable
-              onPress={handleRewind}
-              disabled={!lastSwipedProfile}
-              testID="rewind-button"
-              style={({ pressed }) => ({
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                backgroundColor: lastSwipedProfile ? "#FFFFFF" : theme.surface,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: !lastSwipedProfile ? 0.35 : pressed ? 0.7 : 1,
-                shadowColor: lastSwipedProfile ? "#FFD700" : "#000",
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: lastSwipedProfile ? 0.4 : 0.15,
-                shadowRadius: 6,
-                elevation: lastSwipedProfile ? 6 : 2,
-              })}
-            >
-              <RotateCcw
-                size={22}
-                color={lastSwipedProfile ? "#FFD700" : theme.textPlaceholder}
-                strokeWidth={2.5}
-              />
-            </Pressable>
-
-            {/* Pass (X) */}
-            <Pressable
-              onPress={() => handleActionButton("pass")}
-              testID="pass-button"
-              style={({ pressed }) => ({
-                width: 58,
-                height: 58,
-                borderRadius: 29,
-                backgroundColor: "#FFFFFF",
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: pressed ? 0.8 : 1,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.15,
-                shadowRadius: 6,
-                elevation: 4,
-              })}
-            >
-              <X size={28} color="#1A1A1A" strokeWidth={2.5} />
-            </Pressable>
-
-            {/* Like (Heart) - largest */}
-            <Pressable
-              onPress={() => handleActionButton("like")}
-              testID="like-button"
-              style={({ pressed }) => ({
-                width: 70,
-                height: 70,
-                borderRadius: 35,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: pressed ? 0.85 : 1,
-                shadowColor: theme.primary,
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.5,
-                shadowRadius: 12,
-                elevation: 8,
-                overflow: "hidden",
-              })}
-            >
-              <LinearGradient
-                colors={["#FF5E73", "#E8445A"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: 70,
-                  height: 70,
-                  borderRadius: 35,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Heart size={32} color="#fff" fill="#fff" />
-              </LinearGradient>
-            </Pressable>
-
-            {/* Super Like (Star) */}
-            <Pressable
-              onPress={() => handleActionButton("super")}
-              testID="super-button"
-              style={({ pressed }) => ({
-                width: 58,
-                height: 58,
-                borderRadius: 29,
-                backgroundColor: "#FFFFFF",
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: pressed ? 0.8 : 1,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.15,
-                shadowRadius: 6,
-                elevation: 4,
-              })}
-            >
-              <Star size={26} color="#FFD700" fill="#FFD700" />
-            </Pressable>
-
-            {/* Spacer to balance rewind */}
-            <View style={{ width: 52 }} />
-          </View>
-        </>
-      ) : (
-        /* Empty / limit reached state */
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            paddingHorizontal: 32,
-            paddingTop: insets.top,
-          }}
-        >
-          {limitReached ? (
-            <>
-              <View
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  backgroundColor: theme.surface,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 24,
-                }}
-              >
-                <Text style={{ fontSize: 36 }}>⏰</Text>
-              </View>
-              <Text
-                style={{
-                  color: theme.textPrimary,
-                  fontSize: 22,
-                  fontWeight: "700",
-                  textAlign: "center",
-                  marginBottom: 8,
-                }}
-              >
-                Günlük hakkın bitti
-              </Text>
-              <Text
-                style={{
-                  color: theme.textSecondary,
-                  fontSize: 15,
-                  textAlign: "center",
-                  marginBottom: 28,
-                  lineHeight: 22,
-                }}
-              >
-                Yarın {SWIPE_LIMIT} yeni swipe hakkın olacak ya da Premium ile sınırsız swipe yap
-              </Text>
-              <Pressable
-                onPress={() => router.push("/paywall" as never)}
-                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-              >
-                <LinearGradient
-                  colors={gradients.button}
-                  style={{ paddingVertical: 16, paddingHorizontal: 32, borderRadius: 28 }}
-                >
-                  <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
-                    Premium'a Yükselt
-                  </Text>
-                </LinearGradient>
-              </Pressable>
-            </>
-          ) : discoverLoading ? (
-            <ActivityIndicator color={theme.primary} size="large" />
-          ) : hasActiveFilters ? (
-            <>
-              <View
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  backgroundColor: theme.surface,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 24,
-                }}
-              >
-                <SlidersHorizontal size={36} color={theme.textSecondary} />
-              </View>
-              <Text
-                style={{
-                  color: theme.textPrimary,
-                  fontSize: 22,
-                  fontWeight: "700",
-                  textAlign: "center",
-                  marginBottom: 8,
-                }}
-              >
-                Filtrene uyan profil yok
-              </Text>
-              <Text
-                style={{
-                  color: theme.textSecondary,
-                  fontSize: 15,
-                  textAlign: "center",
-                  marginBottom: 28,
-                  lineHeight: 22,
-                }}
-              >
-                Filtrelerini değiştirerek daha fazla kişiyi keşfet.
-              </Text>
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setFilterVisible(true);
-                }}
-                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-              >
-                <LinearGradient
-                  colors={gradients.button}
-                  style={{ paddingVertical: 16, paddingHorizontal: 32, borderRadius: 28 }}
-                >
-                  <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
-                    Filtreleri Düzenle
-                  </Text>
-                </LinearGradient>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <View
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  backgroundColor: theme.surface,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 24,
-                }}
-              >
-                <Heart size={36} color={theme.primary} />
-              </View>
-              <Text
-                style={{
-                  color: theme.textPrimary,
-                  fontSize: 22,
-                  fontWeight: "700",
-                  textAlign: "center",
-                  marginBottom: 8,
-                }}
-              >
-                Hepsi bu kadar!
-              </Text>
-              <Text
-                style={{
-                  color: theme.textSecondary,
-                  fontSize: 15,
-                  textAlign: "center",
-                  marginBottom: 28,
-                  lineHeight: 22,
-                }}
-              >
-                Yakınındaki herkesi gördün. Daha sonra tekrar kontrol et.
-              </Text>
-              <Pressable
-                onPress={() => refetch()}
-                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-              >
-                <LinearGradient
-                  colors={gradients.button}
-                  style={{ paddingVertical: 16, paddingHorizontal: 32, borderRadius: 28 }}
-                >
-                  <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Yenile</Text>
-                </LinearGradient>
-              </Pressable>
-            </>
-          )}
-
-          {/* Show filter button in empty state header too */}
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setFilterVisible(true);
-            }}
-            testID="filter-button-empty"
-            style={({ pressed }) => ({
-              position: "absolute",
-              top: insets.top + 8,
-              right: 20,
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: hasActiveFilters ? theme.primary + "22" : theme.surface,
               alignItems: "center",
               justifyContent: "center",
-              opacity: pressed ? 0.7 : 1,
-              borderWidth: 1,
-              borderColor: hasActiveFilters ? theme.primary : theme.borderDefault,
-            })}
+              paddingHorizontal: 32,
+              paddingTop: insets.top,
+            }}
           >
-            <SlidersHorizontal
-              size={18}
-              color={hasActiveFilters ? theme.primary : theme.textSecondary}
-            />
-            {hasActiveFilters ? (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 6,
-                  right: 6,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: theme.primary,
-                  borderWidth: 1.5,
-                  borderColor: theme.surface,
-                }}
-              />
-            ) : null}
-          </Pressable>
-        </View>
-      )}
+            {limitReached ? (
+              <>
+                <View
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 40,
+                    backgroundColor: Colors.cardDark,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 24,
+                  }}
+                >
+                  <Ionicons name="time-outline" size={40} color={Colors.primaryLight} />
+                </View>
+                <Text style={{ color: Colors.textOnDark, fontSize: 24, fontFamily: "DMSerifDisplay_400Regular", textAlign: "center", marginBottom: 8 }}>
+                  Günlük hakkın bitti
+                </Text>
+                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 15, fontFamily: "DMSans_400Regular", textAlign: "center", marginBottom: 28, lineHeight: 22 }}>
+                  Yarın {SWIPE_LIMIT} yeni swipe hakkın olacak ya da Premium ile sınırsız swipe yap
+                </Text>
+                <View style={{ width: "100%" }}>
+                  <UMButton variant="primary" label="Premium'a Yükselt" onPress={() => router.push("/paywall" as never)} />
+                </View>
+              </>
+            ) : discoverLoading ? (
+              <ActivityIndicator color={Colors.primary} size="large" />
+            ) : hasActiveFilters ? (
+              <>
+                <View
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 40,
+                    backgroundColor: Colors.cardDark,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 24,
+                  }}
+                >
+                  <Ionicons name="options-outline" size={40} color={Colors.primaryLight} />
+                </View>
+                <Text style={{ color: Colors.textOnDark, fontSize: 24, fontFamily: "DMSerifDisplay_400Regular", textAlign: "center", marginBottom: 8 }}>
+                  Filtrene uyan profil yok
+                </Text>
+                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 15, fontFamily: "DMSans_400Regular", textAlign: "center", marginBottom: 28, lineHeight: 22 }}>
+                  Filtrelerini değiştirerek daha fazla kişiyi keşfet.
+                </Text>
+                <View style={{ width: "100%" }}>
+                  <UMButton variant="primary" label="Filtreleri Düzenle" onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setFilterVisible(true);
+                  }} />
+                </View>
+              </>
+            ) : (
+              <>
+                <View
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 40,
+                    backgroundColor: Colors.cardDark,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 24,
+                  }}
+                >
+                  <Ionicons name="heart-outline" size={40} color={Colors.primaryLight} />
+                </View>
+                <Text style={{ color: Colors.textOnDark, fontSize: 24, fontFamily: "DMSerifDisplay_400Regular", textAlign: "center", marginBottom: 8 }}>
+                  Şimdilik yeni profil yok
+                </Text>
+                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 15, fontFamily: "DMSans_400Regular", textAlign: "center", marginBottom: 28, lineHeight: 22 }}>
+                  Yakınındaki herkesi gördün. Daha sonra tekrar kontrol et.
+                </Text>
+                <View style={{ width: "100%" }}>
+                  <UMButton variant="primary" label="Yenile" onPress={() => refetch()} />
+                </View>
+              </>
+            )}
+
+            <View style={{ position: "absolute", top: insets.top + 8, right: 20 }} testID="filter-button-empty-wrap">
+              {filterButton}
+            </View>
+          </View>
+        )}
+      </Animated.View>
 
       {/* Filter modal */}
       <FilterModal
