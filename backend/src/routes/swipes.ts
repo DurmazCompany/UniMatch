@@ -357,6 +357,33 @@ swipesRouter.delete("/", async (c) => {
   const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
   if (!myProfile) return c.json({ error: { message: "Profile not found" } }, 404);
 
+  // Premium gate for rewind
+  const isPremiumActive =
+    myProfile.isPremium &&
+    myProfile.premiumUntil &&
+    myProfile.premiumUntil > new Date();
+  const premiumTier = myProfile.premiumTier;
+
+  if (!isPremiumActive) {
+    return c.json({ error: { message: "Geri alma özelliği premium üyeler içindir.", code: "PREMIUM_REQUIRED" } }, 403);
+  }
+
+  // Check rewind daily limit
+  const todayStr = new Date().toDateString();
+  const lastRewindDay = myProfile.lastRewindDate ? new Date(myProfile.lastRewindDate).toDateString() : null;
+  let rewindsToday = myProfile.rewindsToday;
+
+  // Reset counter if it's a new day
+  if (lastRewindDay !== todayStr) {
+    rewindsToday = 0;
+  }
+
+  // Flört tier: max 1 rewind/day
+  if (premiumTier === "flort" && rewindsToday >= 1) {
+    return c.json({ error: { message: "Günlük geri alma limitine ulaştın.", code: "REWIND_LIMIT" } }, 429);
+  }
+  // Aşk (ask) tier: unlimited — no check needed
+
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
@@ -379,7 +406,11 @@ swipesRouter.delete("/", async (c) => {
   const newSwipesToday = Math.max(0, myProfile.swipesToday - 1);
   await prisma.profile.update({
     where: { id: myProfile.id },
-    data: { swipesToday: newSwipesToday },
+    data: {
+      swipesToday: newSwipesToday,
+      rewindsToday: rewindsToday + 1,
+      lastRewindDate: new Date(),
+    },
   });
 
   return c.json({ data: { success: true } });

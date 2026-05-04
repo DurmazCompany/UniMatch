@@ -18,6 +18,13 @@ discoverRouter.get("/", async (c) => {
   const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
   if (!myProfile) return c.json({ error: { message: "Profile not found" } }, 404);
 
+  // Parse advanced filter query params
+  const hobbiesParam = c.req.query("hobbies"); // CSV: "music,sports"
+  const yearParam = c.req.query("year"); // "1" | "2" | "3" | "4"
+  const lifestyleParam = c.req.query("lifestyle"); // "morning" | "night"
+  const hobbyList = hobbiesParam ? hobbiesParam.split(",").map(h => h.trim()) : [];
+  const filterYear = yearParam ? parseInt(yearParam) : null;
+
   // Get IDs already swiped
   const swiped = await prisma.swipe.findMany({
     where: { swiperId: myProfile.id },
@@ -39,7 +46,7 @@ discoverRouter.get("/", async (c) => {
   // Build candidate filter — apply university filter if the user has a universityId
   const excludeIds = [myProfile.id, ...swipedIds, ...blockedProfileIds];
 
-  const candidates = await prisma.profile.findMany({
+  let candidates = await prisma.profile.findMany({
     where: {
       id: { notIn: excludeIds },
       ...(myProfile.universityId ? { universityId: myProfile.universityId } : {}),
@@ -47,6 +54,25 @@ discoverRouter.get("/", async (c) => {
     take: 50,
     orderBy: { profilePower: "desc" },
   });
+
+  // Filter by year
+  if (filterYear) {
+    candidates = candidates.filter(p => p.year === filterYear);
+  }
+  // Filter by lifestyle
+  if (lifestyleParam) {
+    candidates = candidates.filter(p => {
+      const lifestyle = (() => { try { return JSON.parse(p.lifestyle || "{}"); } catch { return {}; } })();
+      return lifestyle.schedule === lifestyleParam;
+    });
+  }
+  // Filter by hobbies (at least 1 matching)
+  if (hobbyList.length > 0) {
+    candidates = candidates.filter(p => {
+      const pHobbies: string[] = (() => { try { return JSON.parse(p.hobbies || "[]"); } catch { return []; } })();
+      return hobbyList.some(h => pHobbies.includes(h));
+    });
+  }
 
   // Determine events the current user has joined this week
   const weekAgo = new Date();
@@ -103,10 +129,24 @@ discoverRouter.get("/", async (c) => {
     })
   );
 
-  // Sort: premium boost + profilePower + compatibility + random jitter for variety
+  const now = new Date();
+
+  // Sort: premium tier + boost + profilePower + compatibility + random jitter for variety
   scored.sort((a, b) => {
-    const scoreA = (a.isPremium ? 0.3 : 0) + a.profilePower * 0.007 + a.compatibilityScore * 0.005 + Math.random() * 0.1;
-    const scoreB = (b.isPremium ? 0.3 : 0) + b.profilePower * 0.007 + b.compatibilityScore * 0.005 + Math.random() * 0.1;
+    let priorityA = 0;
+    let priorityB = 0;
+
+    // Premium tier priority scoring
+    if (a.isPremium && a.premiumUntil && a.premiumUntil > now && a.premiumTier === "flort") priorityA += 0.5;
+    if (a.premiumTier === "ask") priorityA += 1.0;
+    if (a.boostUntil && a.boostUntil > now) priorityA += 2.0;
+
+    if (b.isPremium && b.premiumUntil && b.premiumUntil > now && b.premiumTier === "flort") priorityB += 0.5;
+    if (b.premiumTier === "ask") priorityB += 1.0;
+    if (b.boostUntil && b.boostUntil > now) priorityB += 2.0;
+
+    const scoreA = priorityA + (a.isPremium ? 0.3 : 0) + a.profilePower * 0.007 + a.compatibilityScore * 0.005 + Math.random() * 0.1;
+    const scoreB = priorityB + (b.isPremium ? 0.3 : 0) + b.profilePower * 0.007 + b.compatibilityScore * 0.005 + Math.random() * 0.1;
     return scoreB - scoreA;
   });
 

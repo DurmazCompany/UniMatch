@@ -104,6 +104,12 @@ model Profile {
   universityRef     University? @relation(fields: [universityId], references: [id])
   role              String    @default("user")   // "user" | "ambassador" | "admin"
   referralCode      String    @default("")       // auto-generated on first profile create
+  boostUntil            DateTime?
+  rewindsToday          Int       @default(0)
+  lastRewindDate        DateTime?
+  premiumTier           String?   // "flort" | "ask" | null
+  matchExtensionsThisWeek Int     @default(0)
+  lastExtensionWeek     DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -159,6 +165,7 @@ model Message {
   voiceDuration Int?      // Duration in seconds
   expiresAt     DateTime? // For ephemeral messages
   isDeleted     Boolean   @default(false) // Soft delete
+  readAt        DateTime?
   createdAt     DateTime  @default(now())
   match         Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
   sender        Profile   @relation(fields: [senderId], references: [id], onDelete: Cascade)

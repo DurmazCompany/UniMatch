@@ -180,6 +180,29 @@ profilesRouter.post("/", async (c) => {
   return c.json({ data: created });
 });
 
+// POST /api/profile/boost — activate/stack a 30-minute profile boost
+profilesRouter.post("/boost", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+
+  const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
+  if (!myProfile) return c.json({ error: { message: "Profile not found" } }, 404);
+
+  // Extend boost by 30 minutes (stack if already active)
+  const now = new Date();
+  const currentBoostEnd = myProfile.boostUntil && myProfile.boostUntil > now
+    ? myProfile.boostUntil
+    : now;
+  const newBoostUntil = new Date(currentBoostEnd.getTime() + 30 * 60 * 1000);
+
+  await prisma.profile.update({
+    where: { id: myProfile.id },
+    data: { boostUntil: newBoostUntil },
+  });
+
+  return c.json({ data: { boostUntil: newBoostUntil } });
+});
+
 // POST /api/profile/push-token - save push notification token
 profilesRouter.post("/push-token", async (c) => {
   const user = c.get("user");

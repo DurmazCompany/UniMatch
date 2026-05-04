@@ -74,16 +74,59 @@ webhooksRouter.post(
       if (PREMIUM_GRANT_EVENTS.includes(eventType)) {
         const expirationMs = event.expiration_at_ms;
         const premiumUntil = expirationMs ? new Date(expirationMs) : null;
+        const productId = event.product_id ?? "";
+
+        // Build update data based on product ID
+        const updateData: {
+          isPremium?: boolean;
+          premiumUntil?: Date | null;
+          premiumTier?: string | null;
+          boostUntil?: Date;
+          superLikesLeft?: number;
+        } = {
+          isPremium: true,
+          premiumUntil,
+        };
+
+        if (productId === "unimatch_flort_monthly") {
+          updateData.isPremium = true;
+          updateData.premiumTier = "flort";
+          updateData.premiumUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        } else if (productId === "unimatch_ask_yearly") {
+          updateData.isPremium = true;
+          updateData.premiumTier = "ask";
+          updateData.premiumUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+        } else if (productId === "unimatch_boost_1") {
+          const currentBoostEnd = profile.boostUntil && profile.boostUntil > new Date() ? profile.boostUntil : new Date();
+          updateData.boostUntil = new Date(currentBoostEnd.getTime() + 30 * 60 * 1000);
+          // Boost purchases don't set premium
+          delete updateData.isPremium;
+          delete updateData.premiumUntil;
+        } else if (productId === "unimatch_boost_3") {
+          const currentBoostEnd = profile.boostUntil && profile.boostUntil > new Date() ? profile.boostUntil : new Date();
+          updateData.boostUntil = new Date(currentBoostEnd.getTime() + 3 * 30 * 60 * 1000);
+          delete updateData.isPremium;
+          delete updateData.premiumUntil;
+        } else if (productId === "unimatch_superlikes_5") {
+          updateData.superLikesLeft = profile.superLikesLeft + 5;
+          delete updateData.isPremium;
+          delete updateData.premiumUntil;
+        } else if (productId === "unimatch_superlikes_15") {
+          updateData.superLikesLeft = profile.superLikesLeft + 15;
+          delete updateData.isPremium;
+          delete updateData.premiumUntil;
+        } else if (productId === "unimatch_superlikes_30") {
+          updateData.superLikesLeft = profile.superLikesLeft + 30;
+          delete updateData.isPremium;
+          delete updateData.premiumUntil;
+        }
 
         await prisma.profile.update({
           where: { userId },
-          data: {
-            isPremium: true,
-            premiumUntil,
-          },
+          data: updateData,
         });
 
-        console.log(`[RevenueCat] Granted premium to user: ${userId}, until: ${premiumUntil}`);
+        console.log(`[RevenueCat] Granted premium to user: ${userId}, until: ${premiumUntil}, product: ${productId}`);
         return c.json({ data: { received: true, processed: true, action: "premium_granted" } });
       }
 
@@ -94,6 +137,7 @@ webhooksRouter.post(
           data: {
             isPremium: false,
             premiumUntil: null,
+            premiumTier: null,
           },
         });
 
