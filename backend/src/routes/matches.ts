@@ -76,7 +76,7 @@ matchesRouter.post("/:id/accept-icebreaker", async (c) => {
   }
 
   // Verify match is still active
-  if (!existingMatch.isActive || new Date(existingMatch.expiresAt) < new Date()) {
+  if (!existingMatch.isActive || (existingMatch.expiresAt && new Date(existingMatch.expiresAt) < new Date())) {
     return c.json({ error: { message: "Match has expired", code: "EXPIRED" } }, 410);
   }
 
@@ -125,7 +125,7 @@ matchesRouter.get("/:id/messages", async (c) => {
   }
 
   // Verify match is still active
-  if (!match.isActive || new Date(match.expiresAt) < new Date()) {
+  if (!match.isActive || (match.expiresAt && new Date(match.expiresAt) < new Date())) {
     return c.json({ error: { message: "Match has expired", code: "EXPIRED" } }, 410);
   }
 
@@ -177,7 +177,7 @@ matchesRouter.post("/:id/messages", async (c) => {
   }
 
   // Verify match is still active
-  if (!match.isActive || new Date(match.expiresAt) < new Date()) {
+  if (!match.isActive || (match.expiresAt && new Date(match.expiresAt) < new Date())) {
     return c.json({ error: { message: "Match has expired", code: "EXPIRED" } }, 410);
   }
 
@@ -283,7 +283,7 @@ matchesRouter.post("/:id/extend", async (c) => {
   });
   if (!match) return c.json({ error: { message: "Match not found" } }, 404);
 
-  const newExpiry = new Date(Math.max(match.expiresAt.getTime(), Date.now()) + 5 * 24 * 60 * 60 * 1000);
+  const newExpiry = new Date(Math.max(match.expiresAt?.getTime() ?? Date.now(), Date.now()) + 5 * 24 * 60 * 60 * 1000);
 
   await prisma.match.update({ where: { id: matchId }, data: { expiresAt: newExpiry } });
 
