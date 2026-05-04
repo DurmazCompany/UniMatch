@@ -31,6 +31,10 @@ export interface Profile {
   compatibilityScore?: number;
   isPremium?: boolean;
   premiumUntil?: string;
+  boostUntil?: string | null;
+  premiumTier?: "flort" | "ask" | null;
+  rewindsToday?: number;
+  matchExtensionsThisWeek?: number;
 }
 
 // Who liked me response types
@@ -73,6 +77,7 @@ export interface Message {
   voiceUrl?: string;
   voiceDuration?: number;
   createdAt: string;
+  readAt?: string | null;
   sender: Profile;
 }
 

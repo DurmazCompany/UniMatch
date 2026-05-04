@@ -9,10 +9,11 @@ import {
   Image,
   TextInput,
 } from "react-native";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 import { api } from "@/lib/api/api";
 import { Match, Profile } from "@/lib/types";
 import { useSession } from "@/lib/auth/use-session";
@@ -147,7 +148,7 @@ function NewMatchCircle({ match, myUserId }: { match: Match; myUserId: string })
 }
 
 // Conversation row for "Mesajlar" vertical list
-function ConversationRow({ match, myUserId }: { match: Match; myUserId: string }) {
+function ConversationRow({ match, myUserId, onExtend }: { match: Match; myUserId: string; onExtend?: (matchId: string) => void }) {
   const partner = getPartnerProfile(match, myUserId);
   const myProfile = match.user1.userId === myUserId ? match.user1 : match.user2;
   const [c1, c2] = getProfileColor(partner.id);
@@ -159,6 +160,8 @@ function ConversationRow({ match, myUserId }: { match: Match; myUserId: string }
   const timeAgo = lastMessage
     ? formatDistanceToNow(new Date(lastMessage.createdAt), { locale: tr, addSuffix: false })
     : formatDistanceToNow(new Date(match.matchedAt), { locale: tr, addSuffix: false });
+
+  const isExpiringSoon = match.expiresAt && (new Date(match.expiresAt).getTime() - Date.now()) < 6 * 60 * 60 * 1000;
 
   return (
     <Pressable
@@ -216,7 +219,28 @@ function ConversationRow({ match, myUserId }: { match: Match; myUserId: string }
           <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: "700" }}>
             {partner.name}
           </Text>
-          <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{timeAgo}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            {isExpiringSoon && onExtend ? (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onExtend(match.id);
+                }}
+                testID={`extend-match-${match.id}`}
+                style={{
+                  backgroundColor: "rgba(212,83,126,0.1)",
+                  borderRadius: 12,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderWidth: 1,
+                  borderColor: "rgba(212,83,126,0.3)",
+                }}
+              >
+                <Text style={{ color: theme.primary, fontSize: 12, fontWeight: "600" }}>+5 Gün</Text>
+              </Pressable>
+            ) : null}
+            <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{timeAgo}</Text>
+          </View>
         </View>
 
         {/* Last message + read receipt */}
@@ -244,6 +268,21 @@ export default function MatchesScreen() {
   const insets = useSafeAreaInsets();
   const { data: session } = useSession();
   const myUserId = session?.user?.id ?? "";
+  const queryClient = useQueryClient();
+
+  const extendMutation = useMutation({
+    mutationFn: (matchId: string) => api.post(`/api/matches/${matchId}/extend`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    onError: (err: any) => {
+      if (err?.code === "PREMIUM_REQUIRED") {
+        router.push("/paywall");
+      }
+    },
+  });
+  const handleExtendMatch = (matchId: string) => extendMutation.mutate(matchId);
 
   const { data: matches, isLoading } = useQuery<Match[] | null>({
     queryKey: ["matches"],
@@ -281,9 +320,9 @@ export default function MatchesScreen() {
 
   const renderConversation = useCallback(
     ({ item }: { item: Match }) => (
-      <ConversationRow match={item} myUserId={myUserId} />
+      <ConversationRow match={item} myUserId={myUserId} onExtend={handleExtendMatch} />
     ),
-    [myUserId]
+    [myUserId, handleExtendMatch]
   );
 
   if (isLoading) {

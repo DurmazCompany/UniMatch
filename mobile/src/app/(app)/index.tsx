@@ -46,9 +46,25 @@ const YEAR_FILTERS: { value: number; label: string }[] = [
   { value: 4, label: "4.+ Sınıf" },
 ];
 
+const FILTER_HOBBIES = [
+  { value: "music", label: "Müzik" },
+  { value: "sports", label: "Spor" },
+  { value: "gaming", label: "Oyun" },
+  { value: "movies", label: "Film" },
+  { value: "reading", label: "Kitap" },
+  { value: "travel", label: "Seyahat" },
+  { value: "photography", label: "Fotoğraf" },
+  { value: "cooking", label: "Yemek" },
+  { value: "art", label: "Sanat" },
+  { value: "fitness", label: "Fitness" },
+];
+
 interface ActiveFilters {
   zodiacSigns: ZodiacSign[];
   years: number[];
+  hobbies: string[];
+  filterYear: number | null;
+  lifestyle: "morning" | "night" | null;
 }
 
 function FilterModal({
@@ -65,12 +81,18 @@ function FilterModal({
   const insets = useSafeAreaInsets();
   const [localZodiac, setLocalZodiac] = useState<ZodiacSign[]>(initialFilters.zodiacSigns);
   const [localYears, setLocalYears] = useState<number[]>(initialFilters.years);
+  const [localHobbies, setLocalHobbies] = useState<string[]>(initialFilters.hobbies);
+  const [localFilterYear, setLocalFilterYear] = useState<number | null>(initialFilters.filterYear);
+  const [localLifestyle, setLocalLifestyle] = useState<"morning" | "night" | null>(initialFilters.lifestyle);
 
   // Sync when modal opens
   useEffect(() => {
     if (visible) {
       setLocalZodiac(initialFilters.zodiacSigns);
       setLocalYears(initialFilters.years);
+      setLocalHobbies(initialFilters.hobbies);
+      setLocalFilterYear(initialFilters.filterYear);
+      setLocalLifestyle(initialFilters.lifestyle);
     }
   }, [visible]);
 
@@ -92,11 +114,14 @@ function FilterModal({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setLocalZodiac([]);
     setLocalYears([]);
+    setLocalHobbies([]);
+    setLocalFilterYear(null);
+    setLocalLifestyle(null);
   };
 
   const handleApply = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onApply({ zodiacSigns: localZodiac, years: localYears });
+    onApply({ zodiacSigns: localZodiac, years: localYears, hobbies: localHobbies, filterYear: localFilterYear, lifestyle: localLifestyle });
     onClose();
   };
 
@@ -207,7 +232,7 @@ function FilterModal({
           >
             Sınıf
           </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 32 }}>
             {YEAR_FILTERS.map(({ value, label }) => {
               const selected = localYears.includes(value);
               return (
@@ -235,6 +260,84 @@ function FilterModal({
                     }}
                   >
                     {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Yaşam Tarzı filter section */}
+          <Text
+            style={{
+              color: theme.textPrimary,
+              fontSize: 16,
+              fontWeight: "700",
+              marginBottom: 14,
+            }}
+          >
+            Yaşam Tarzı
+          </Text>
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 32 }}>
+            {[
+              { value: "morning", label: "☀️ Sabahçı" },
+              { value: "night", label: "🌙 Gece Kuşu" },
+            ].map(opt => (
+              <Pressable
+                key={opt.value}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setLocalLifestyle(localLifestyle === opt.value ? null : opt.value as "morning" | "night");
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  backgroundColor: localLifestyle === opt.value ? theme.primary : "#F8F4F6",
+                  borderWidth: 1,
+                  borderColor: localLifestyle === opt.value ? theme.primary : "#E8D8E0",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: localLifestyle === opt.value ? "#fff" : theme.textSecondary, fontWeight: "600" }}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Ortak Hobiler filter section */}
+          <Text
+            style={{
+              color: theme.textPrimary,
+              fontSize: 16,
+              fontWeight: "700",
+              marginBottom: 14,
+            }}
+          >
+            Ortak Hobiler
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {FILTER_HOBBIES.map(h => {
+              const sel = localHobbies.includes(h.value);
+              return (
+                <Pressable
+                  key={h.value}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    if (sel) setLocalHobbies(prev => prev.filter(v => v !== h.value));
+                    else setLocalHobbies(prev => [...prev, h.value]);
+                  }}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 100,
+                    backgroundColor: sel ? "rgba(212,83,126,0.1)" : "#F8F4F6",
+                    borderWidth: 1,
+                    borderColor: sel ? theme.primary : "#E8D8E0",
+                  }}
+                >
+                  <Text style={{ color: sel ? theme.primary : theme.textSecondary, fontSize: 13, fontWeight: "600" }}>
+                    {h.label}
                   </Text>
                 </Pressable>
               );
@@ -290,7 +393,7 @@ export default function DiscoverScreen() {
   const [lastSwipedProfile, setLastSwipedProfile] = useState<Profile | null>(null);
   const [lastSwipeDirection, setLastSwipeDirection] = useState<"like" | "pass" | "super" | null>(null);
   const [filterVisible, setFilterVisible] = useState<boolean>(false);
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({ zodiacSigns: [], years: [] });
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({ zodiacSigns: [], years: [], hobbies: [], filterYear: null, lifestyle: null });
 
   const isMounted = useRef<boolean>(true);
   const swipeStackRef = useRef<SwipeStackRef>(null);
@@ -343,10 +446,16 @@ export default function DiscoverScreen() {
   }, [profileSettled, myProfile]);
 
   const { isLoading: discoverLoading, refetch } = useQuery<Profile[] | null>({
-    queryKey: ["discover"],
+    queryKey: ["discover", activeFilters.hobbies, activeFilters.filterYear, activeFilters.lifestyle],
     queryFn: async () => {
       try {
-        const data = await api.get<Profile[]>("/api/discover");
+        const params = new URLSearchParams();
+        if (activeFilters.hobbies.length > 0) params.append("hobbies", activeFilters.hobbies.join(","));
+        if (activeFilters.filterYear) params.append("year", String(activeFilters.filterYear));
+        if (activeFilters.lifestyle) params.append("lifestyle", activeFilters.lifestyle);
+        const queryString = params.toString();
+        const url = `/api/discover${queryString ? `?${queryString}` : ""}`;
+        const data = await api.get<Profile[]>(url);
         const result = data ?? [];
         if (isMounted.current) setProfiles(result);
         return result;
@@ -445,7 +554,11 @@ export default function DiscoverScreen() {
   });
 
   const hasActiveFilters =
-    activeFilters.zodiacSigns.length > 0 || activeFilters.years.length > 0;
+    activeFilters.zodiacSigns.length > 0 ||
+    activeFilters.years.length > 0 ||
+    activeFilters.hobbies.length > 0 ||
+    activeFilters.filterYear !== null ||
+    activeFilters.lifestyle !== null;
 
   if (profileLoading || (!profileLoaded && discoverLoading)) {
     return (

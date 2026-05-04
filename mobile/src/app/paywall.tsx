@@ -35,6 +35,8 @@ import {
   RotateCcw,
   Sparkles,
   Check,
+  Filter,
+  Zap,
 } from "lucide-react-native";
 
 type TierId = "crush" | "flort" | "ask";
@@ -76,13 +78,14 @@ const TIER_DEFINITIONS: PackageTier[] = [
       { icon: RotateCcw, text: "Geri alma yok", included: false },
       { icon: Eye, text: "Seni beğenenleri gör", included: false },
       { icon: Star, text: "Süper beğeni (günlük 1)", included: true },
+      { icon: Filter, text: "Gelişmiş filtreler", included: false },
     ],
   },
   {
     id: "flort",
     storeIdentifier: "unimatch_flort_monthly",
     name: "Flört",
-    price: "₺89,99",
+    price: "₺119,99",
     period: "/ay",
     isRecommended: true,
     accentColor: "#D4537E",
@@ -91,22 +94,24 @@ const TIER_DEFINITIONS: PackageTier[] = [
       { icon: RotateCcw, text: "Son beğeniyi geri al", included: true },
       { icon: Eye, text: "Seni beğenenleri gör", included: true },
       { icon: Star, text: "Günlük 3 süper beğeni", included: true },
+      { icon: Filter, text: "Gelişmiş filtreler", included: true },
     ],
   },
   {
     id: "ask",
     storeIdentifier: "unimatch_ask_yearly",
     name: "Aşk",
-    price: "₺41,67",
+    price: "₺74,99",
     period: "/ay",
-    perMonthHint: "Yıllık ödenir · ₺499,99/yıl",
-    savings: "%54 tasarruf",
+    perMonthHint: "Yıllık ödenir · ₺899,99/yıl",
+    savings: "%37 tasarruf",
     accentColor: "#FFD700",
     features: [
       { icon: Heart, text: "Sınırsız beğeni", included: true },
-      { icon: RotateCcw, text: "Son beğeniyi geri al", included: true },
+      { icon: RotateCcw, text: "Sınırsız geri alma", included: true },
       { icon: Eye, text: "Seni beğenenleri gör", included: true },
       { icon: Star, text: "Günlük 5 süper beğeni", included: true },
+      { icon: Filter, text: "Gelişmiş filtreler + Okundu bilgisi", included: true },
     ],
   },
 ];
@@ -120,9 +125,14 @@ interface AddonPackage {
 }
 
 const SUPER_LIKE_PACKAGES: AddonPackage[] = [
-  { id: "sl_5", label: "5 Süper Beğeni", price: "₺24,99", storeId: "unimatch_superlikes_5" },
-  { id: "sl_15", label: "15 Süper Beğeni", price: "₺59,99", storeId: "unimatch_superlikes_15", badge: "Popüler" },
-  { id: "sl_30", label: "30 Süper Beğeni", price: "₺99,99", storeId: "unimatch_superlikes_30" },
+  { id: "sl_5", label: "5 Süper Beğeni", price: "₺29,99", storeId: "unimatch_superlikes_5" },
+  { id: "sl_15", label: "15 Süper Beğeni", price: "₺74,99", storeId: "unimatch_superlikes_15", badge: "Popüler" },
+  { id: "sl_30", label: "30 Süper Beğeni", price: "₺129,99", storeId: "unimatch_superlikes_30" },
+];
+
+const BOOST_PACKAGES: AddonPackage[] = [
+  { id: "boost_1", label: "1 Boost (30 dk)", price: "₺44,99", storeId: "unimatch_boost_1" },
+  { id: "boost_3", label: "3 Boost", price: "₺109,99", storeId: "unimatch_boost_3", badge: "Fırsat" },
 ];
 
 // Feature row component for package cards
@@ -795,6 +805,52 @@ export default function PaywallScreen() {
             >
               Tek seferlik ekstralar
             </Text>
+          </View>
+
+          {/* Boost subsection */}
+          <View
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 12,
+              shadowColor: "#000",
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 1 },
+              elevation: 1,
+              borderWidth: 1,
+              borderColor: "#F0EAF0",
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
+              <Zap size={15} color="#E8436A" />
+              <Text
+                style={{
+                  color: theme.textPrimary,
+                  fontSize: 14,
+                  fontFamily: "PlusJakartaSans_600SemiBold",
+                }}
+              >
+                Boost
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0 }}
+              contentContainerStyle={{ gap: 10, paddingTop: 12, paddingBottom: 4 }}
+            >
+              {BOOST_PACKAGES.map((addon) => (
+                <AddonCard
+                  key={addon.id}
+                  addon={addon}
+                  icon={<Zap size={20} color="#E8436A" />}
+                  onPress={() => handlePurchaseAddon(addon)}
+                  loading={purchasingAddonId === addon.id}
+                />
+              ))}
+            </ScrollView>
           </View>
 
           {/* Super Like subsection */}

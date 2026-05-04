@@ -199,6 +199,13 @@ export default function ChatScreen() {
     };
   }, []);
 
+  // Mark messages as read when entering chat
+  useEffect(() => {
+    if (matchId) {
+      api.patch(`/api/matches/${matchId}/read`, {}).catch(() => {});
+    }
+  }, [matchId]);
+
   // SSE: listen for new messages in real-time
   useEffect(() => {
     if (!matchId) return;
@@ -305,6 +312,7 @@ export default function ChatScreen() {
   });
 
   const myProfile = match ? (match.user1.userId === myUserId ? match.user1 : match.user2) : null;
+  const isPremiumAsk = myProfile?.premiumTier === "ask";
   const partner = match ? getPartnerProfile(match, myUserId) : null;
   const [pc1, pc2] = partner ? getProfileColor(partner.id) : ["#E8445A", "#FF5E73"];
   const partnerPhotos = partner ? parsePhotos(partner.photos) : [];
@@ -702,11 +710,16 @@ export default function ChatScreen() {
                 {isMe ? <CheckCheck size={14} color="#4CD964" /> : null}
               </View>
             ) : null}
+            {isMe && msg.readAt && isPremiumAsk ? (
+              <Text style={{ color: "#9CA3AF", fontSize: 10, textAlign: "right", marginTop: 2 }}>
+                Görüldü
+              </Text>
+            ) : null}
           </View>
         </View>
       );
     },
-    [myProfile, partner, partnerPhotos, pc1, pc2, messagesWithSeparators, viewedEphemeralIds, handleEphemeralTap]
+    [myProfile, partner, partnerPhotos, pc1, pc2, messagesWithSeparators, viewedEphemeralIds, handleEphemeralTap, isPremiumAsk]
   );
 
   const isEmpty = !isLoading && (messages?.length ?? 0) === 0;
