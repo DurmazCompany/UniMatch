@@ -2,13 +2,21 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { prisma } from "../prisma";
+import { env } from "../env";
+import {
+  PRODUCT_TO_TIER,
+  COIN_PACKAGES,
+  applySubscriptionFromWebhook,
+  applyCancellationFromWebhook,
+  creditCoins,
+} from "../lib/monetization";
 
 const webhooksRouter = new Hono();
 
-// RevenueCat webhook event types
 const revenueCatEventSchema = z.object({
   api_version: z.string().optional(),
   event: z.object({
+    id: z.string().optional(),
     type: z.string(),
     app_user_id: z.string(),
     original_app_user_id: z.string().optional(),
@@ -31,127 +39,72 @@ const revenueCatEventSchema = z.object({
   }),
 });
 
-// Events that grant premium access
-const PREMIUM_GRANT_EVENTS = [
+const SUBSCRIPTION_EVENTS = new Set([
   "INITIAL_PURCHASE",
   "RENEWAL",
   "PRODUCT_CHANGE",
   "RESTORE",
   "UNCANCELLATION",
-];
-
-// Events that revoke premium access
-const PREMIUM_REVOKE_EVENTS = [
-  "EXPIRATION",
+]);
+const CANCELLATION_EVENTS = new Set([
   "CANCELLATION",
+  "EXPIRATION",
   "BILLING_ISSUE",
   "SUBSCRIPTION_PAUSED",
-];
+]);
 
 webhooksRouter.post(
   "/revenuecat",
   zValidator("json", revenueCatEventSchema),
   async (c) => {
+    // Auth check
+    if (env.REVENUECAT_WEBHOOK_SECRET) {
+      const authHeader = c.req.header("authorization") ?? c.req.header("Authorization");
+      const expected = `Bearer ${env.REVENUECAT_WEBHOOK_SECRET}`;
+      if (authHeader !== expected) {
+        return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+      }
+    }
+
     const { event } = c.req.valid("json");
     const userId = event.app_user_id;
     const eventType = event.type;
+    const productId = event.product_id ?? "";
 
-    console.log(`[RevenueCat] Received event: ${eventType} for user: ${userId}`);
+    console.log(`[RevenueCat] event=${eventType} user=${userId} product=${productId}`);
 
     try {
-      // Find the profile by userId
-      const profile = await prisma.profile.findUnique({
-        where: { userId },
-      });
-
+      const profile = await prisma.profile.findUnique({ where: { userId } });
       if (!profile) {
-        console.log(`[RevenueCat] Profile not found for user: ${userId}`);
-        // Return 200 anyway so RevenueCat doesn't retry
+        // RC sends app_user_id which equals our user.id
         return c.json({ data: { received: true, processed: false, reason: "profile_not_found" } });
       }
 
-      // Check if this event grants premium
-      if (PREMIUM_GRANT_EVENTS.includes(eventType)) {
-        const expirationMs = event.expiration_at_ms;
-        const premiumUntil = expirationMs ? new Date(expirationMs) : null;
-        const productId = event.product_id ?? "";
-
-        // Build update data based on product ID
-        const updateData: {
-          isPremium?: boolean;
-          premiumUntil?: Date | null;
-          premiumTier?: string | null;
-          boostUntil?: Date;
-          superLikesLeft?: number;
-        } = {
-          isPremium: true,
-          premiumUntil,
-        };
-
-        if (productId === "unimatch_flort_monthly") {
-          updateData.isPremium = true;
-          updateData.premiumTier = "flort";
-          updateData.premiumUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        } else if (productId === "unimatch_ask_yearly") {
-          updateData.isPremium = true;
-          updateData.premiumTier = "ask";
-          updateData.premiumUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-        } else if (productId === "unimatch_boost_1") {
-          const currentBoostEnd = profile.boostUntil && profile.boostUntil > new Date() ? profile.boostUntil : new Date();
-          updateData.boostUntil = new Date(currentBoostEnd.getTime() + 30 * 60 * 1000);
-          // Boost purchases don't set premium
-          delete updateData.isPremium;
-          delete updateData.premiumUntil;
-        } else if (productId === "unimatch_boost_3") {
-          const currentBoostEnd = profile.boostUntil && profile.boostUntil > new Date() ? profile.boostUntil : new Date();
-          updateData.boostUntil = new Date(currentBoostEnd.getTime() + 3 * 30 * 60 * 1000);
-          delete updateData.isPremium;
-          delete updateData.premiumUntil;
-        } else if (productId === "unimatch_superlikes_5") {
-          updateData.superLikesLeft = profile.superLikesLeft + 5;
-          delete updateData.isPremium;
-          delete updateData.premiumUntil;
-        } else if (productId === "unimatch_superlikes_15") {
-          updateData.superLikesLeft = profile.superLikesLeft + 15;
-          delete updateData.isPremium;
-          delete updateData.premiumUntil;
-        } else if (productId === "unimatch_superlikes_30") {
-          updateData.superLikesLeft = profile.superLikesLeft + 30;
-          delete updateData.isPremium;
-          delete updateData.premiumUntil;
-        }
-
-        await prisma.profile.update({
-          where: { userId },
-          data: updateData,
-        });
-
-        console.log(`[RevenueCat] Granted premium to user: ${userId}, until: ${premiumUntil}, product: ${productId}`);
-        return c.json({ data: { received: true, processed: true, action: "premium_granted" } });
+      // Subscription product → tier upgrade
+      if (SUBSCRIPTION_EVENTS.has(eventType) && PRODUCT_TO_TIER[productId]) {
+        const { tier, days } = PRODUCT_TO_TIER[productId];
+        await applySubscriptionFromWebhook(prisma, profile.id, tier, days, event.id ?? null);
+        return c.json({ data: { received: true, processed: true, action: "subscription_applied", tier } });
       }
 
-      // Check if this event revokes premium
-      if (PREMIUM_REVOKE_EVENTS.includes(eventType)) {
-        await prisma.profile.update({
-          where: { userId },
-          data: {
-            isPremium: false,
-            premiumUntil: null,
-            premiumTier: null,
-          },
-        });
-
-        console.log(`[RevenueCat] Revoked premium from user: ${userId}`);
-        return c.json({ data: { received: true, processed: true, action: "premium_revoked" } });
+      // Consumable coin pack
+      if (eventType === "NON_RENEWING_PURCHASE" && COIN_PACKAGES[productId]) {
+        const amount = COIN_PACKAGES[productId];
+        await creditCoins(prisma, profile.id, amount, "rc_purchase", "rc_event", event.id ?? null);
+        return c.json({ data: { received: true, processed: true, action: "coins_credited", amount } });
       }
 
-      // Other events we acknowledge but don't act on
-      console.log(`[RevenueCat] Event ${eventType} received but no action taken`);
-      return c.json({ data: { received: true, processed: false, reason: "no_action_required" } });
+      // Cancellation/expiration
+      if (CANCELLATION_EVENTS.has(eventType)) {
+        await applyCancellationFromWebhook(prisma, profile.id);
+        return c.json({ data: { received: true, processed: true, action: "subscription_cleared" } });
+      }
+
+      return c.json({ data: { received: true, processed: false, reason: "no_action" } });
     } catch (error) {
-      console.error("[RevenueCat] Error processing webhook:", error);
-      // Return 500 so RevenueCat retries
-      return c.json({ error: { message: "Internal server error", code: "INTERNAL_ERROR" } }, 500);
+      console.error("[RevenueCat] error:", error);
+      // Always 200 to avoid retry storms
+      return c.json({ data: { received: true, processed: false, reason: "error" } });
     }
   }
 );

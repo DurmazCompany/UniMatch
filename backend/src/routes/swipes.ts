@@ -5,6 +5,7 @@ import { auth } from "../auth";
 import { randomUUID } from "crypto";
 import { calculateCompatibility } from "../lib/compatibility";
 import { sendPushNotification } from "../lib/push";
+import { effectiveTier, TIER_LIMITS, consumeRewind, MonetizationError } from "../lib/monetization";
 
 const swipeSchema = z.object({
   targetProfileId: z.string().min(1),
@@ -57,14 +58,11 @@ swipesRouter.post("/", async (c) => {
   const today = new Date().toDateString();
   const lastSwipeDay = myProfile.lastSwipeDate ? new Date(myProfile.lastSwipeDate).toDateString() : null;
 
-  const isPremiumActive =
-    myProfile.isPremium &&
-    myProfile.premiumUntil &&
-    myProfile.premiumUntil > new Date();
-
-  const dailySwipeLimit = isPremiumActive ? 999 : 5;
+  const tier = effectiveTier(myProfile);
+  const tierLimit = TIER_LIMITS[tier].dailyLikes;
+  const dailySwipeLimit = tierLimit === -1 ? Number.POSITIVE_INFINITY : tierLimit;
   // Super like daily allowance: premium=5, free=1
-  const dailySuperLikeLimit = isPremiumActive ? 5 : 1;
+  const dailySuperLikeLimit = tier === "crush" ? 1 : 5;
 
   if (lastSwipeDay !== today) {
     // Reset swipes and super likes daily
@@ -81,7 +79,7 @@ swipesRouter.post("/", async (c) => {
   }
 
   if (myProfile.swipesToday >= dailySwipeLimit) {
-    return c.json({ error: { message: "Günlük beğeni limitine ulaştın. Daha fazlası için Premium'a geç!", code: "LIMIT_REACHED" } }, 429);
+    return c.json({ error: { message: "Günlük beğeni limitine ulaştın. Daha fazlası için Flört veya Aşk'a geç!", code: "TIER_INSUFFICIENT" } }, 402);
   }
 
   // Check super like limit
@@ -297,7 +295,7 @@ swipesRouter.post("/", async (c) => {
   return c.json({
     data: {
       match,
-      swipesLeft: dailySwipeLimit - (updateData.swipesToday ?? newSwipesToday),
+      swipesLeft: dailySwipeLimit === Number.POSITIVE_INFINITY ? -1 : dailySwipeLimit - (updateData.swipesToday ?? newSwipesToday),
       streakCount: newStreak,
       streakJustReached,
     },
@@ -357,32 +355,17 @@ swipesRouter.delete("/", async (c) => {
   const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
   if (!myProfile) return c.json({ error: { message: "Profile not found" } }, 404);
 
-  // Premium gate for rewind
-  const isPremiumActive =
-    myProfile.isPremium &&
-    myProfile.premiumUntil &&
-    myProfile.premiumUntil > new Date();
-  const premiumTier = myProfile.premiumTier;
-
-  if (!isPremiumActive) {
-    return c.json({ error: { message: "Geri alma özelliği premium üyeler içindir.", code: "PREMIUM_REQUIRED" } }, 403);
+  // Tier/quota gate for rewind via monetization helper
+  try {
+    await consumeRewind(prisma, myProfile.id);
+  } catch (err) {
+    if (err instanceof MonetizationError) {
+      if (err.code === "TIER_INSUFFICIENT" || err.code === "REWIND_QUOTA_EXCEEDED") {
+        return c.json({ error: { message: err.code, code: err.code } }, 402);
+      }
+    }
+    throw err;
   }
-
-  // Check rewind daily limit
-  const todayStr = new Date().toDateString();
-  const lastRewindDay = myProfile.lastRewindDate ? new Date(myProfile.lastRewindDate).toDateString() : null;
-  let rewindsToday = myProfile.rewindsToday;
-
-  // Reset counter if it's a new day
-  if (lastRewindDay !== todayStr) {
-    rewindsToday = 0;
-  }
-
-  // Flört tier: max 1 rewind/day
-  if (premiumTier === "flort" && rewindsToday >= 1) {
-    return c.json({ error: { message: "Günlük geri alma limitine ulaştın.", code: "REWIND_LIMIT" } }, 429);
-  }
-  // Aşk (ask) tier: unlimited — no check needed
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -408,7 +391,6 @@ swipesRouter.delete("/", async (c) => {
     where: { id: myProfile.id },
     data: {
       swipesToday: newSwipesToday,
-      rewindsToday: rewindsToday + 1,
       lastRewindDate: new Date(),
     },
   });

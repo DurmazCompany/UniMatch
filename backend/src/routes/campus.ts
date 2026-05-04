@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "../prisma";
 import { auth } from "../auth";
+import { effectiveTier, viewWhoLiked, MonetizationError } from "../lib/monetization";
 
 export const campusRouter = new Hono<{
   Variables: {
@@ -40,6 +41,20 @@ campusRouter.get("/who-liked-me", async (c) => {
   const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
   if (!myProfile) return c.json({ error: { message: "Profile not found" } }, 404);
 
+  const tier = effectiveTier(myProfile);
+  if (tier !== "crush") {
+    try {
+      await viewWhoLiked(prisma, myProfile.id);
+    } catch (err) {
+      if (err instanceof MonetizationError) {
+        if (err.code === "WHO_LIKED_QUOTA_EXCEEDED") {
+          return c.json({ error: { message: err.code, code: err.code } }, 402);
+        }
+      }
+      throw err;
+    }
+  }
+
   const swipers = await prisma.swipe.findMany({
     where: { swipedId: myProfile.id, direction: { in: ["like", "super"] } },
     include: { swiper: true },
@@ -47,11 +62,7 @@ campusRouter.get("/who-liked-me", async (c) => {
     take: 20,
   });
 
-  // Check if user has active premium
-  const isPremiumActive = myProfile.isPremium &&
-    (!myProfile.premiumUntil || new Date(myProfile.premiumUntil) > new Date());
-
-  if (isPremiumActive) {
+  if (tier !== "crush") {
     // Premium user: return full swiper profiles
     return c.json({
       data: {

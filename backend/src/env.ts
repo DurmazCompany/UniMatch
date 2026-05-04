@@ -14,6 +14,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().default("file:./dev.db"),
   // Better Auth
   BETTER_AUTH_SECRET: z.string().min(1, "BETTER_AUTH_SECRET is required"),
+  // RevenueCat webhook auth (optional in dev)
+  REVENUECAT_WEBHOOK_SECRET: z.string().optional().default(""),
 });
 
 /**

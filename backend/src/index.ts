@@ -19,6 +19,11 @@ import { eventsRouter } from "./routes/events";
 import { referralsRouter } from "./routes/referrals";
 import { blocksRouter } from "./routes/blocks";
 import { mediaRouter } from "./routes/media";
+import { walletRouter } from "./routes/wallet";
+import { giftsRouter } from "./routes/gifts";
+import { boostsRouter } from "./routes/boosts";
+import { ambassadorRouter } from "./routes/ambassador";
+import { usersRouter } from "./routes/users";
 
 const app = new Hono<{
   Variables: {
@@ -81,6 +86,11 @@ app.route("/api/events", eventsRouter);
 app.route("/api/referrals", referralsRouter);
 app.route("/api/blocks", blocksRouter);
 app.route("/api/media", mediaRouter);
+app.route("/api/me/wallet", walletRouter);
+app.route("/api/me", usersRouter);
+app.route("/api/gifts", giftsRouter);
+app.route("/api/boosts", boostsRouter);
+app.route("/api/ambassador", ambassadorRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

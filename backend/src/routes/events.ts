@@ -73,6 +73,8 @@ eventsRouter.post(
       isPaid: z.boolean().optional().default(false),
       ticketPrice: z.number().positive().optional(),
       maxAttendees: z.number().int().positive().optional(),
+      capacity: z.number().int().positive().optional(),
+      coverUrl: z.string().url().optional(),
     })
   ),
   async (c) => {
@@ -104,10 +106,94 @@ eventsRouter.post(
         isPaid: body.isPaid ?? false,
         ticketPrice: body.isPaid ? body.ticketPrice : null,
         maxAttendees: body.maxAttendees ?? null,
+        capacity: body.capacity ?? null,
+        coverUrl: body.coverUrl ?? null,
       },
     });
 
     return c.json({ data: event });
+  }
+);
+
+// POST /:id/invite — invite another user to an event (must share a match if matchId given)
+eventsRouter.post(
+  "/:id/invite",
+  zValidator(
+    "json",
+    z.object({
+      receiver_id: z.string().min(1),
+      match_id: z.string().optional().nullable(),
+    })
+  ),
+  async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+
+    const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
+    if (!myProfile) return c.json({ error: { message: "Profile not found", code: "PROFILE_NOT_FOUND" } }, 404);
+
+    const eventId = c.req.param("id");
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event || !event.isActive) {
+      return c.json({ error: { message: "Event not found", code: "EVENT_NOT_FOUND" } }, 404);
+    }
+
+    const body = c.req.valid("json");
+
+    if (body.match_id) {
+      const match = await prisma.match.findUnique({ where: { id: body.match_id } });
+      if (!match) {
+        return c.json({ error: { message: "Match not found", code: "MATCH_NOT_FOUND" } }, 404);
+      }
+      const ok =
+        (match.user1Id === myProfile.id && match.user2Id === body.receiver_id) ||
+        (match.user2Id === myProfile.id && match.user1Id === body.receiver_id);
+      if (!ok) {
+        return c.json({ error: { message: "Match does not include both users", code: "MATCH_MISMATCH" } }, 422);
+      }
+    }
+
+    const invite = await prisma.eventInvitation.create({
+      data: {
+        eventId,
+        senderId: myProfile.id,
+        receiverId: body.receiver_id,
+        matchId: body.match_id ?? null,
+        status: "pending",
+      },
+    });
+
+    return c.json({ data: invite });
+  }
+);
+
+// POST /:id/invitations/:invId/respond — receiver accepts/declines
+eventsRouter.post(
+  "/:id/invitations/:invId/respond",
+  zValidator(
+    "json",
+    z.object({ status: z.enum(["accepted", "declined"]) })
+  ),
+  async (c) => {
+    const user = c.get("user");
+    if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+
+    const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
+    if (!myProfile) return c.json({ error: { message: "Profile not found", code: "PROFILE_NOT_FOUND" } }, 404);
+
+    const invId = c.req.param("invId");
+    const inv = await prisma.eventInvitation.findUnique({ where: { id: invId } });
+    if (!inv) return c.json({ error: { message: "Invitation not found", code: "NOT_FOUND" } }, 404);
+    if (inv.receiverId !== myProfile.id) {
+      return c.json({ error: { message: "Forbidden", code: "FORBIDDEN" } }, 403);
+    }
+
+    const { status } = c.req.valid("json");
+    const updated = await prisma.eventInvitation.update({
+      where: { id: invId },
+      data: { status },
+    });
+    return c.json({ data: updated });
   }
 );
 
