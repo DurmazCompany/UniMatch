@@ -1,7 +1,8 @@
 import { Tabs } from "expo-router";
-import { Home, MessageCircle, User, CalendarDays } from "lucide-react-native";
-import { View, Platform } from "react-native";
-import { theme } from "@/lib/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Colors } from "@/lib/theme";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api/api";
 import { Match } from "@/lib/types";
@@ -34,25 +35,32 @@ function useHasUnreadMessages() {
 
 export default function AppLayout() {
   const hasUnread = useHasUnreadMessages();
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
+        tabBarActiveTintColor: Colors.white,
+        tabBarInactiveTintColor: "rgba(255,255,255,0.55)",
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopColor: "#F0EAF0",
-          borderTopWidth: 1,
-          paddingTop: 10,
-          paddingBottom: Platform.OS === "ios" ? 0 : 14,
-          paddingHorizontal: 0,
-          height: Platform.OS === "ios" ? 83 : 60,
-        },
-        tabBarActiveTintColor: "#E8436A",
-        tabBarInactiveTintColor: "#C4A8B4",
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "600",
-          letterSpacing: 0.2,
+          position: "absolute",
+          marginHorizontal: 20,
+          bottom: insets.bottom + 8,
+          left: 0,
+          right: 0,
+          backgroundColor: Colors.primary,
+          borderRadius: 30,
+          height: 64,
+          paddingTop: 8,
+          paddingHorizontal: 12,
+          borderTopWidth: 0,
+          elevation: 12,
+          shadowColor: "#000",
+          shadowOpacity: 0.3,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 },
         },
       }}
     >
@@ -61,28 +69,7 @@ export default function AppLayout() {
         options={{
           title: "Keşfet",
           tabBarIcon: ({ color, focused }) => (
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                transform: [{ scale: focused ? 1.18 : 1 }],
-              }}
-            >
-              {focused ? (
-                <View
-                  style={{
-                    shadowColor: theme.primary,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.7,
-                    shadowRadius: 10,
-                  }}
-                >
-                  <Home size={26} color={color} strokeWidth={2.5} fill={color} />
-                </View>
-              ) : (
-                <Home size={24} color={color} strokeWidth={2} />
-              )}
-            </View>
+            <Ionicons name={focused ? "home" : "home-outline"} size={26} color={color} />
           ),
         }}
       />
@@ -91,28 +78,7 @@ export default function AppLayout() {
         options={{
           title: "Bu Hafta",
           tabBarIcon: ({ color, focused }) => (
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                transform: [{ scale: focused ? 1.18 : 1 }],
-              }}
-            >
-              {focused ? (
-                <View
-                  style={{
-                    shadowColor: theme.primary,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.7,
-                    shadowRadius: 10,
-                  }}
-                >
-                  <CalendarDays size={26} color={color} strokeWidth={2.5} />
-                </View>
-              ) : (
-                <CalendarDays size={24} color={color} strokeWidth={2} />
-              )}
-            </View>
+            <Ionicons name={focused ? "heart" : "heart-outline"} size={26} color={color} />
           ),
         }}
       />
@@ -121,29 +87,8 @@ export default function AppLayout() {
         options={{
           title: "Mesajlar",
           tabBarIcon: ({ color, focused }) => (
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-                transform: [{ scale: focused ? 1.18 : 1 }],
-              }}
-            >
-              {focused ? (
-                <View
-                  style={{
-                    shadowColor: theme.primary,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.7,
-                    shadowRadius: 10,
-                  }}
-                >
-                  <MessageCircle size={26} color={color} strokeWidth={2.5} fill={`${color}30`} />
-                </View>
-              ) : (
-                <MessageCircle size={24} color={color} strokeWidth={2} />
-              )}
-              {/* Notification badge */}
+            <View style={{ alignItems: "center", justifyContent: "center", position: "relative" }}>
+              <Ionicons name={focused ? "chatbubble" : "chatbubble-outline"} size={26} color={color} />
               {hasUnread && (
                 <View
                   style={{
@@ -153,13 +98,9 @@ export default function AppLayout() {
                     width: 9,
                     height: 9,
                     borderRadius: 5,
-                    backgroundColor: theme.primary,
+                    backgroundColor: Colors.coral,
                     borderWidth: 1.5,
-                    borderColor: "#FFFFFF",
-                    shadowColor: theme.primary,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.9,
-                    shadowRadius: 4,
+                    borderColor: Colors.white,
                   }}
                 />
               )}
@@ -172,28 +113,7 @@ export default function AppLayout() {
         options={{
           title: "Profil",
           tabBarIcon: ({ color, focused }) => (
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                transform: [{ scale: focused ? 1.18 : 1 }],
-              }}
-            >
-              {focused ? (
-                <View
-                  style={{
-                    shadowColor: theme.primary,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.7,
-                    shadowRadius: 10,
-                  }}
-                >
-                  <User size={26} color={color} strokeWidth={2.5} fill={`${color}40`} />
-                </View>
-              ) : (
-                <User size={24} color={color} strokeWidth={2} />
-              )}
-            </View>
+            <Ionicons name={focused ? "person" : "person-outline"} size={26} color={color} />
           ),
         }}
       />
