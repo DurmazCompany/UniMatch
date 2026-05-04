@@ -493,6 +493,8 @@ function SettingsItem({
   isDestructive?: boolean;
 }) {
   const color = isDestructive ? ERROR_RED : Colors.textOnDark;
+  const iconBg = isDestructive ? "rgba(255,107,107,0.12)" : "rgba(124,111,247,0.15)";
+  const iconColor = isDestructive ? ERROR_RED : Colors.primary;
   return (
     <Pressable
       onPress={onPress}
@@ -500,16 +502,34 @@ function SettingsItem({
         flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: Spacing.lg,
-        paddingVertical: 16,
+        paddingVertical: 14,
+        gap: 14,
         borderBottomWidth: isLast ? 0 : 1,
         borderBottomColor: "rgba(255,255,255,0.06)",
         backgroundColor: pressed ? "rgba(255,255,255,0.03)" : "transparent",
       })}
     >
-      <View style={{ width: 32 }}>
-        <Ionicons name={iconName} size={20} color={isDestructive ? ERROR_RED : Colors.textOnDarkMuted} />
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          backgroundColor: iconBg,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name={iconName} size={18} color={iconColor} />
       </View>
-      <Text style={{ flex: 1, color, fontSize: 15, fontFamily: "DMSans_500Medium" }}>
+      <Text
+        style={{
+          flex: 1,
+          color,
+          fontSize: 15,
+          fontFamily: "DMSans_600SemiBold",
+          letterSpacing: 0.1,
+        }}
+      >
         {label}
       </Text>
       {!isDestructive ? <Ionicons name="chevron-forward-outline" size={18} color={Colors.textOnDarkMuted} /> : null}
