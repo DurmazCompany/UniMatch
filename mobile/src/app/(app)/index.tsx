@@ -21,6 +21,7 @@ import { Profile, Match, SwipeResponse } from "@/lib/types";
 import { useSession } from "@/lib/auth/use-session";
 import { Colors, Radius, Spacing } from "@/lib/theme";
 import { UMButton } from "@/components/ui";
+import { WalletPill } from "@/components/WalletPill";
 import { getZodiacSign, ZodiacSign } from "@/lib/astrology";
 
 const SWIPE_LIMIT = 10;
@@ -540,10 +541,13 @@ export default function DiscoverScreen() {
                 justifyContent: "space-between",
               }}
             >
-              <Text style={{ color: Colors.textOnDark, fontSize: 28, fontFamily: "DMSerifDisplay_400Regular" }}>
+              <Text style={{ flex: 1, color: Colors.textOnDark, fontSize: 28, fontFamily: "DMSerifDisplay_400Regular" }}>
                 Keşfet
               </Text>
-              {filterButton}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <WalletPill />
+                {filterButton}
+              </View>
             </View>
 
             {/* Card area */}

@@ -39,6 +39,18 @@ export async function purchasePackage(pkg: PurchasesPackage) {
   }
 }
 
+export async function purchasePackageById(storeId: string) {
+  const packages = await getOfferings();
+  const pkg = packages.find((p) => p.product.identifier === storeId);
+  if (!pkg) throw new Error(`Package not found: ${storeId}`);
+  return purchasePackage(pkg);
+}
+
+export async function identify(userId: string) {
+  if (!API_KEY) return;
+  await Purchases.logIn(userId);
+}
+
 export async function checkPremiumStatus(): Promise<boolean> {
   try {
     const customerInfo = await Purchases.getCustomerInfo();
