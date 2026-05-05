@@ -48,7 +48,7 @@ export default async function AuditLogPage({
     where,
     orderBy: { createdAt: "desc" },
     take: 200,
-    include: { admin: true, target: true },
+    include: { admin: true, targetUser: true },
   });
 
   return (
@@ -107,12 +107,12 @@ export default async function AuditLogPage({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="font-medium text-sm">{a.actionType}</span>
-                      {a.target && (
+                      {a.targetUser && (
                         <Link
-                          href={`/users/${a.target.id}`}
+                          href={`/users/${a.targetUser.id}`}
                           className="text-sm text-blue-600 hover:underline"
                         >
-                          → {a.target.name}
+                          → {a.targetUser.name}
                         </Link>
                       )}
                       <span className="text-xs text-gray-400 ml-auto">

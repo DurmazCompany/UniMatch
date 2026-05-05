@@ -7,14 +7,14 @@ import { approveAmbassador, rejectAmbassador } from "@/app/ambassadors/actions";
 
 type AppItem = {
   id: string;
-  profileId: string;
+  userId: string;
   university: string;
   faculty: string;
-  year: number;
+  year: string;
   motivation: string;
   socialLinks: string | null;
   status: string;
-  rejectReason: string | null;
+  rejectionReason: string | null;
   createdAt: Date;
   profile: { id: string; name: string };
 };
@@ -81,9 +81,9 @@ export function AmbassadorCard({ app }: { app: AppItem }) {
         </div>
       )}
 
-      {app.rejectReason && (
+      {app.rejectionReason && (
         <div className="text-sm text-red-700">
-          <strong>Red sebebi:</strong> {app.rejectReason}
+          <strong>Red sebebi:</strong> {app.rejectionReason}
         </div>
       )}
 

@@ -17,7 +17,7 @@ export async function approveAmbassador(applicationId: string) {
       data: { status: "approved" },
     }),
     prisma.profile.update({
-      where: { id: app.profileId },
+      where: { id: app.userId },
       data: {
         role: "ambassador",
         subscriptionTier: "ask",
@@ -28,7 +28,7 @@ export async function approveAmbassador(applicationId: string) {
       data: {
         adminId: ADMIN_ID,
         actionType: "approve_ambassador",
-        targetUserId: app.profileId,
+        targetUserId: app.userId,
         details: JSON.stringify({ applicationId }),
       },
     }),
@@ -48,13 +48,13 @@ export async function rejectAmbassador(
   await prisma.$transaction([
     prisma.ambassadorApplication.update({
       where: { id: applicationId },
-      data: { status: "rejected", rejectReason: reason },
+      data: { status: "rejected", rejectionReason: reason },
     }),
     prisma.adminAction.create({
       data: {
         adminId: ADMIN_ID,
         actionType: "reject_ambassador",
-        targetUserId: app.profileId,
+        targetUserId: app.userId,
         details: JSON.stringify({ applicationId, reason }),
       },
     }),

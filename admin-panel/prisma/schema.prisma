@@ -1,9 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -103,13 +104,20 @@ model Profile {
   universityRef     University? @relation(fields: [universityId], references: [id])
   role              String    @default("user")   // "user" | "ambassador" | "admin"
   referralCode      String    @default("")       // auto-generated on first profile create
+  boostUntil            DateTime?
+  rewindsToday          Int       @default(0)
+  lastRewindDate        DateTime?
+  premiumTier           String?   // "flort" | "ask" | null
+  matchExtensionsThisWeek Int     @default(0)
+  lastExtensionWeek     DateTime?
+  // Monetization v2
   isBanned              Boolean   @default(false)
   banReason             String?
   bannedUntil           DateTime?
-  subscriptionTier      String    @default("crush") // "crush" | "flort" | "ask"
+  isInvisible           Boolean   @default(false)
+  subscriptionTier      String    @default("crush")  // "crush" | "flort" | "ask"
   subscriptionExpiresAt DateTime?
   ambassadorGrantedAt   DateTime?
-  isInvisible           Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -122,41 +130,17 @@ model Profile {
   eventParticipations EventParticipant[]
   referralsSent       Referral[]        @relation("ReferralInviter")
   referralsReceived   Referral[]        @relation("ReferralInvited")
-  adminActionsTaken     AdminAction[]          @relation("AdminActionAdmin")
-  adminActionsReceived  AdminAction[]          @relation("AdminActionTarget")
+  coinBalance         CoinBalance?
+  coinLedgerEntries   CoinLedger[]
+  sentGifts           GiftSent[]        @relation("GiftSender")
+  receivedGifts       GiftSent[]        @relation("GiftReceiver")
+  boostLedger         BoostLedger[]
+  subscriptionQuota   SubscriptionQuota?
   ambassadorApplication AmbassadorApplication?
-}
-
-model AdminAction {
-  id           String   @id @default(cuid())
-  adminId      String
-  actionType   String   // "ban" | "unban" | "grant_premium" | "revoke_premium" | "change_role" | "approve_ambassador" | "reject_ambassador" | "deactivate_event"
-  targetUserId String?
-  details      String?  // JSON
-  createdAt    DateTime @default(now())
-  admin        Profile  @relation("AdminActionAdmin", fields: [adminId], references: [id], onDelete: Cascade)
-  target       Profile? @relation("AdminActionTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
-
-  @@index([adminId])
-  @@index([targetUserId])
-  @@index([actionType])
-}
-
-model AmbassadorApplication {
-  id           String   @id @default(cuid())
-  profileId    String   @unique
-  university   String
-  faculty      String
-  year         Int
-  motivation   String
-  socialLinks  String?  // JSON
-  status       String   @default("pending") // "pending" | "approved" | "rejected"
-  rejectReason String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([status])
+  sentEventInvites    EventInvitation[] @relation("EventInviteSender")
+  receivedEventInvites EventInvitation[] @relation("EventInviteReceiver")
+  adminActionsTaken   AdminAction[]     @relation("AdminAuthor")
+  adminActionsReceived AdminAction[]    @relation("AdminTarget")
 }
 
 model Swipe {
@@ -176,7 +160,7 @@ model Match {
   user1Id             String
   user2Id             String
   matchedAt           DateTime  @default(now())
-  expiresAt           DateTime  // 48 hours after match
+  expiresAt           DateTime? // DEPRECATED: matches are permanent now (kept nullable for backward compat)
   iceBreakerQuestion  String
   iceBreakerAccepted  Boolean   @default(false)
   compatibilityScore  Int       @default(0) // 0-100
@@ -200,6 +184,7 @@ model Message {
   voiceDuration Int?      // Duration in seconds
   expiresAt     DateTime? // For ephemeral messages
   isDeleted     Boolean   @default(false) // Soft delete
+  readAt        DateTime?
   createdAt     DateTime  @default(now())
   match         Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
   sender        Profile   @relation(fields: [senderId], references: [id], onDelete: Cascade)
@@ -222,8 +207,11 @@ model Event {
   ticketPrice   Float?
   maxAttendees  Int?
   ticketsSold   Int       @default(0)
+  capacity      Int?
+  coverUrl      String?
   createdAt     DateTime  @default(now())
   participants  EventParticipant[]
+  invitations   EventInvitation[]
 }
 
 model EventParticipant {
@@ -260,4 +248,125 @@ model Block {
   blocked   User     @relation("BlockedBlocks", fields: [blockedId], references: [id], onDelete: Cascade)
 
   @@unique([blockerId, blockedId])
+}
+
+model CoinBalance {
+  userId    String   @id
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt
+  profile   Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoinLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  delta     Int      // negative = spend, positive = credit
+  reason    String   // "gift_sent" | "boost_purchase" | "monthly_credit" | "rc_purchase" | "admin_grant" | "refund"
+  refType   String?
+  refId     String?
+  createdAt DateTime @default(now())
+  profile   Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model GiftCatalog {
+  id        String     @id  // "rose", "bouquet", "teddy", "cake", "heart", "ring"
+  nameTr    String
+  emoji     String
+  coinCost  Int
+  sortOrder Int        @default(0)
+  isActive  Boolean    @default(true)
+  sent      GiftSent[]
+}
+
+model GiftSent {
+  id          String      @id @default(cuid())
+  senderId    String
+  receiverId  String
+  giftId      String
+  matchId     String?
+  coinCost    Int
+  createdAt   DateTime    @default(now())
+  sender      Profile     @relation("GiftSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    Profile     @relation("GiftReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  gift        GiftCatalog @relation(fields: [giftId], references: [id])
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([matchId])
+}
+
+model BoostLedger {
+  id              String   @id @default(cuid())
+  userId          String
+  source          String   // "subscription" | "coin"
+  startedAt       DateTime @default(now())
+  expiresAt       DateTime
+  durationMinutes Int
+  profile         Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SubscriptionQuota {
+  userId             String   @id
+  periodStart        DateTime?
+  periodEnd          DateTime?
+  rewindsUsedToday   Int      @default(0)
+  rewindsDayAnchor   DateTime?  // anchor for daily reset
+  boostsUsedPeriod   Int      @default(0)
+  whoLikedViewsPeriod Int     @default(0)
+  updatedAt          DateTime @updatedAt
+  profile            Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AmbassadorApplication {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  university       String
+  faculty          String
+  year             String
+  motivation       String
+  socialLinks      String?   // JSON
+  status           String    @default("pending")  // "pending" | "approved" | "rejected"
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+  createdAt        DateTime  @default(now())
+  profile          Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model EventInvitation {
+  id          String   @id @default(cuid())
+  eventId     String
+  senderId    String
+  receiverId  String
+  matchId     String?
+  status      String   @default("pending")  // "pending" | "accepted" | "declined"
+  createdAt   DateTime @default(now())
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sender      Profile  @relation("EventInviteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    Profile  @relation("EventInviteReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([receiverId])
+}
+
+model AdminAction {
+  id            String   @id @default(cuid())
+  adminId       String
+  actionType    String   // ban|unban|grant_premium|revoke_premium|approve_ambassador|reject_ambassador|delete_event|change_role
+  targetUserId  String?
+  details       String?  // JSON
+  createdAt     DateTime @default(now())
+  admin         Profile  @relation("AdminAuthor", fields: [adminId], references: [id], onDelete: Cascade)
+  targetUser    Profile? @relation("AdminTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminId])
+  @@index([targetUserId])
+  @@index([createdAt])
 }
