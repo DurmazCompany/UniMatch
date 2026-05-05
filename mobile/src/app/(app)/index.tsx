@@ -12,7 +12,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { MatchModal } from "@/components/match/MatchModal";
 import { SwipeStack, SwipeStackRef } from "@/components/swipe/SwipeStack";
@@ -23,6 +30,8 @@ import { Colors, Radius, Spacing } from "@/lib/theme";
 import { UMButton } from "@/components/ui";
 import { WalletPill } from "@/components/WalletPill";
 import { getZodiacSign, ZodiacSign } from "@/lib/astrology";
+import { useWallet } from "@/lib/hooks/useWallet";
+import { openPaywallOnError } from "@/lib/hooks/usePaywallOnError";
 
 const SWIPE_LIMIT = 10;
 
@@ -297,10 +306,24 @@ function FilterModal({
   );
 }
 
+function LikePulse({ children }: { children: React.ReactNode }) {
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(withTiming(1.08, { duration: 600 }), withTiming(1, { duration: 600 })),
+      -1,
+      false
+    );
+  }, []);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
+
 export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
+  const { data: wallet } = useWallet();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [swipesLeft, setSwipesLeft] = useState<number>(SWIPE_LIMIT);
@@ -388,10 +411,14 @@ export default function DiscoverScreen() {
         setCurrentMatch(data.match);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+    },
+    onError: (err) => {
+      openPaywallOnError(err);
     },
   });
 
-  const { mutate: undoSwipe } = useMutation({
+  const { mutateAsync: undoSwipeAsync } = useMutation({
     mutationFn: (targetProfileId: string) =>
       api.delete<null>(`/api/swipe?targetProfileId=${targetProfileId}`),
   });
@@ -428,15 +455,29 @@ export default function DiscoverScreen() {
     [profiles, activeFilters]
   );
 
-  const handleRewind = useCallback(() => {
+  const isCrush = wallet?.tier === "crush";
+  const rewindsLeft = wallet?.quotas.rewinds_left_today ?? 0;
+  const rewindsUnlimited = rewindsLeft === -1;
+
+  const handleRewind = useCallback(async () => {
+    if (isCrush) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push("/paywall");
+      return;
+    }
     if (!lastSwipedProfile) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const restored = lastSwipedProfile;
     setProfiles((prev) => [restored, ...prev]);
-    undoSwipe(restored.id);
     setLastSwipedProfile(null);
     setLastSwipeDirection(null);
-  }, [lastSwipedProfile, undoSwipe]);
+    try {
+      await undoSwipeAsync(restored.id);
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+    } catch (err) {
+      openPaywallOnError(err);
+    }
+  }, [isCrush, lastSwipedProfile, undoSwipeAsync, queryClient]);
 
   const filteredProfiles = profiles.filter((profile) => {
     const hasZodiacFilter = activeFilters.zodiacSigns.length > 0;
@@ -541,9 +582,32 @@ export default function DiscoverScreen() {
                 justifyContent: "space-between",
               }}
             >
-              <Text style={{ flex: 1, color: Colors.textOnDark, fontSize: 28, fontFamily: "DMSerifDisplay_400Regular" }}>
-                Keşfet
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: Colors.textOnDark, fontSize: 28, fontFamily: "DMSerifDisplay_400Regular" }}>
+                  Keşfet
+                </Text>
+                {isCrush && wallet ? (
+                  (() => {
+                    const left = Math.max(0, wallet.quotas.likes_left_today);
+                    const used = Math.max(0, 10 - left);
+                    const lowOnLikes = left < 3;
+                    const indicator = (
+                      <Text
+                        testID="likes-left-indicator"
+                        style={{
+                          color: lowOnLikes ? Colors.coral : Colors.textOnDarkMuted,
+                          fontSize: 12,
+                          fontFamily: "DMSans_500Medium",
+                          marginTop: 2,
+                        }}
+                      >
+                        {used}/10 beğeni
+                      </Text>
+                    );
+                    return lowOnLikes ? <LikePulse>{indicator}</LikePulse> : indicator;
+                  })()
+                ) : null}
+              </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <WalletPill />
                 {filterButton}
@@ -589,22 +653,65 @@ export default function DiscoverScreen() {
               }}
             >
               {/* Rewind */}
-              <Pressable
-                onPress={handleRewind}
-                disabled={!lastSwipedProfile}
-                testID="rewind-button"
-                style={({ pressed }) => ({
-                  width: 48,
-                  height: 48,
-                  borderRadius: 24,
-                  backgroundColor: Colors.cardDark,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: !lastSwipedProfile ? 0.4 : pressed ? 0.7 : 1,
-                })}
-              >
-                <Ionicons name="refresh-outline" size={22} color={Colors.textOnDark} />
-              </Pressable>
+              <View>
+                <Pressable
+                  onPress={handleRewind}
+                  disabled={!isCrush && !lastSwipedProfile}
+                  testID="rewind-button"
+                  style={({ pressed }) => ({
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: Colors.cardDark,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: isCrush
+                      ? pressed
+                        ? 0.7
+                        : 0.85
+                      : !lastSwipedProfile
+                      ? 0.4
+                      : pressed
+                      ? 0.7
+                      : 1,
+                  })}
+                >
+                  <Ionicons
+                    name={isCrush ? "lock-closed-outline" : "refresh-outline"}
+                    size={22}
+                    color={isCrush ? Colors.textOnDarkMuted : Colors.textOnDark}
+                  />
+                </Pressable>
+                {!isCrush && !rewindsUnlimited ? (
+                  <View
+                    testID="rewind-badge"
+                    style={{
+                      position: "absolute",
+                      bottom: -2,
+                      right: -2,
+                      minWidth: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      paddingHorizontal: 5,
+                      backgroundColor: rewindsLeft === 0 ? Colors.coral : Colors.primary,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 2,
+                      borderColor: Colors.bgDark,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontFamily: "DMSans_700Bold",
+                      }}
+                    >
+                      {rewindsLeft}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
 
               {/* Pass */}
               <UMButton variant="swipe-no" onPress={() => handleActionButton("pass")} fullWidth={false} />

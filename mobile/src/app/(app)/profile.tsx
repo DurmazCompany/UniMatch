@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, StatusBar } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, StatusBar, Switch } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,6 +24,8 @@ import { UMAvatar, UMCard, UMButton } from "@/components/ui";
 import { getZodiacSign, getZodiacInfo } from "@/lib/astrology";
 import { useScreenProtection } from "@/lib/hooks/useScreenProtection";
 import { usePrivacyStore } from "@/lib/state/privacyStore";
+import { useWallet } from "@/lib/hooks/useWallet";
+import { openPaywallOnError } from "@/lib/hooks/usePaywallOnError";
 import { Alert } from "react-native";
 
 const ERROR_RED = "#FF6B6B";
@@ -221,6 +223,25 @@ export default function ProfileScreen() {
     },
   });
 
+  const { data: wallet } = useWallet();
+  const isAsk = wallet?.tier === "ask";
+  const isInvisible = wallet?.is_invisible ?? false;
+
+  const visibilityMutation = useMutation({
+    mutationFn: (is_invisible: boolean) =>
+      api.patch("/api/me/visibility", { is_invisible }),
+    onSuccess: () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+    },
+    onError: (err) => {
+      openPaywallOnError(err);
+    },
+  });
+  const handleToggleInvisibility = (val: boolean) => {
+    visibilityMutation.mutate(val);
+  };
+
   const campusMutation = useMutation({
     mutationFn: () => api.post("/api/campus/im-here", {}),
     onSuccess: () => {
@@ -285,6 +306,35 @@ export default function ProfileScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.bgDark }} testID="profile-screen">
       <StatusBar barStyle="light-content" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        {isAsk && isInvisible ? (
+          <View
+            style={{
+              marginHorizontal: 16,
+              marginTop: insets.top + 8,
+              marginBottom: -4,
+              backgroundColor: "rgba(124,111,247,0.15)",
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              borderRadius: Radius.pill,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+            }}
+            testID="invisibility-banner"
+          >
+            <Ionicons name="eye-off-outline" size={16} color={Colors.primaryLight} />
+            <Text
+              style={{
+                color: Colors.primaryLight,
+                fontSize: 12,
+                fontFamily: "DMSans_500Medium",
+                flex: 1,
+              }}
+            >
+              Görünmezlik aktif. Sadece beğendiğin kişiler seni görebilir.
+            </Text>
+          </View>
+        ) : null}
         {/* Header */}
         <View
           style={{
@@ -443,10 +493,10 @@ export default function ProfileScreen() {
             </Text>
             <Pressable
               testID="premium-upgrade-button"
-              onPress={() => router.push("/paywall")}
+              onPress={() => router.push("/who-liked-me")}
               style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
             >
-              <UMButton variant="ghost" label="Premium ile gör" onPress={() => router.push("/paywall")} />
+              <UMButton variant="ghost" label="Hepsini gör" onPress={() => router.push("/who-liked-me")} />
             </Pressable>
           </UMCard>
 
@@ -456,6 +506,24 @@ export default function ProfileScreen() {
               iconName="notifications-outline"
               label="Bildirimler"
               onPress={() => router.push("/(app)/settings/notifications")}
+            />
+            <SettingsItem
+              iconName="eye-off-outline"
+              label="Görünmezlik Modu"
+              onPress={isAsk ? undefined : () => router.push("/paywall")}
+              rightElement={
+                isAsk ? (
+                  <Switch
+                    value={isInvisible}
+                    onValueChange={handleToggleInvisibility}
+                    trackColor={{ false: "rgba(255,255,255,0.1)", true: Colors.primary }}
+                    thumbColor={Colors.white}
+                    testID="invisibility-switch"
+                  />
+                ) : (
+                  <Ionicons name="lock-closed" size={16} color={Colors.textOnDarkMuted} />
+                )
+              }
             />
             <SettingsItem iconName="shield-checkmark-outline" label="Gizlilik ve Güvenlik" />
             <SettingsItem iconName="help-circle-outline" label="Yardım ve Destek" />
@@ -485,12 +553,14 @@ function SettingsItem({
   onPress,
   isLast,
   isDestructive,
+  rightElement,
 }: {
   iconName: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress?: () => void;
   isLast?: boolean;
   isDestructive?: boolean;
+  rightElement?: React.ReactNode;
 }) {
   const color = isDestructive ? ERROR_RED : Colors.textOnDark;
   const iconBg = isDestructive ? "rgba(255,107,107,0.12)" : "rgba(124,111,247,0.15)";
@@ -532,7 +602,11 @@ function SettingsItem({
       >
         {label}
       </Text>
-      {!isDestructive ? <Ionicons name="chevron-forward-outline" size={18} color={Colors.textOnDarkMuted} /> : null}
+      {rightElement !== undefined
+        ? rightElement
+        : !isDestructive
+        ? <Ionicons name="chevron-forward-outline" size={18} color={Colors.textOnDarkMuted} />
+        : null}
     </Pressable>
   );
 }

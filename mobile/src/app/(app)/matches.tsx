@@ -9,10 +9,9 @@ import {
   TextInput,
   StatusBar,
 } from "react-native";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/lib/api/api";
 import { Match, Profile } from "@/lib/types";
@@ -88,7 +87,7 @@ function NewMatchCircle({ match, myUserId }: { match: Match; myUserId: string })
   );
 }
 
-function ConversationRow({ match, myUserId, onExtend }: { match: Match; myUserId: string; onExtend?: (matchId: string) => void }) {
+function ConversationRow({ match, myUserId }: { match: Match; myUserId: string }) {
   const partner = getPartnerProfile(match, myUserId);
   const myProfile = match.user1.userId === myUserId ? match.user1 : match.user2;
   const photos = parsePhotos(partner.photos);
@@ -99,8 +98,6 @@ function ConversationRow({ match, myUserId, onExtend }: { match: Match; myUserId
   const timeAgo = lastMessage
     ? formatDistanceToNow(new Date(lastMessage.createdAt), { locale: tr, addSuffix: false })
     : formatDistanceToNow(new Date(match.matchedAt), { locale: tr, addSuffix: false });
-
-  const isExpiringSoon = match.expiresAt && (new Date(match.expiresAt).getTime() - Date.now()) < 24 * 60 * 60 * 1000;
 
   return (
     <Pressable
@@ -127,32 +124,7 @@ function ConversationRow({ match, myUserId, onExtend }: { match: Match; myUserId
               <Text style={{ color: Colors.textOnDark, fontSize: 15, fontFamily: "DMSans_700Bold" }}>
                 {partner.name}
               </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                {isExpiringSoon && onExtend ? (
-                  <Pressable
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      onExtend(match.id);
-                    }}
-                    testID={`extend-match-${match.id}`}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                      backgroundColor: "rgba(124,111,247,0.15)",
-                      borderRadius: Radius.tag,
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      borderWidth: 1,
-                      borderColor: Colors.primary,
-                    }}
-                  >
-                    <Ionicons name="calendar-outline" size={12} color={Colors.primaryLight} />
-                    <Text style={{ color: Colors.primaryLight, fontSize: 11, fontFamily: "DMSans_700Bold" }}>+5 Gün</Text>
-                  </Pressable>
-                ) : null}
-                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 12, fontFamily: "DMSans_400Regular" }}>{timeAgo}</Text>
-              </View>
+              <Text style={{ color: Colors.textOnDarkMuted, fontSize: 12, fontFamily: "DMSans_400Regular" }}>{timeAgo}</Text>
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -179,23 +151,8 @@ export default function MatchesScreen() {
   const insets = useSafeAreaInsets();
   const { data: session } = useSession();
   const myUserId = session?.user?.id ?? "";
-  const queryClient = useQueryClient();
   const [tab, setTab] = useState<"matches" | "messages">("messages");
   const [search, setSearch] = useState("");
-
-  const extendMutation = useMutation({
-    mutationFn: (matchId: string) => api.post(`/api/matches/${matchId}/extend`, {}),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["matches"] });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    },
-    onError: (err: any) => {
-      if (err?.code === "PREMIUM_REQUIRED") {
-        router.push("/paywall");
-      }
-    },
-  });
-  const handleExtendMatch = (matchId: string) => extendMutation.mutate(matchId);
 
   const { data: matches, isLoading } = useQuery<Match[] | null>({
     queryKey: ["matches"],
@@ -231,9 +188,9 @@ export default function MatchesScreen() {
 
   const renderConversation = useCallback(
     ({ item }: { item: Match }) => (
-      <ConversationRow match={item} myUserId={myUserId} onExtend={handleExtendMatch} />
+      <ConversationRow match={item} myUserId={myUserId} />
     ),
-    [myUserId, handleExtendMatch]
+    [myUserId]
   );
 
   if (isLoading) {

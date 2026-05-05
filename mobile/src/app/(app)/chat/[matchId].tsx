@@ -281,9 +281,6 @@ export default function ChatScreen() {
   const partner = match ? getPartnerProfile(match, myUserId) : null;
   const partnerPhotos = partner ? parsePhotos(partner.photos) : [];
 
-  const expiresInMs = match?.expiresAt ? new Date(match.expiresAt).getTime() - Date.now() : null;
-  const isExpiringSoon = expiresInMs !== null && expiresInMs > 0 && expiresInMs < 24 * 60 * 60 * 1000;
-  const expiryHours = expiresInMs !== null ? Math.max(0, Math.floor(expiresInMs / (60 * 60 * 1000))) : 0;
 
   const messagesWithSeparators = useMemo(() => {
     const msgs = messages ?? [];
@@ -697,29 +694,6 @@ export default function ChatScreen() {
       </View>
 
       {/* Expiry banner */}
-      {isExpiringSoon ? (
-        <View
-          style={{
-            marginHorizontal: 16,
-            marginTop: 12,
-            backgroundColor: "rgba(232,99,90,0.15)",
-            borderRadius: 14,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-            borderWidth: 1,
-            borderColor: "rgba(232,99,90,0.3)",
-          }}
-        >
-          <Ionicons name="time-outline" size={16} color={Colors.coral} />
-          <Text style={{ color: Colors.coral, fontSize: 13, fontFamily: "DMSans_600SemiBold", flex: 1 }}>
-            Bu eşleşme {expiryHours} saat içinde sona eriyor
-          </Text>
-        </View>
-      ) : null}
-
       {/* Messages */}
       {isLoading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

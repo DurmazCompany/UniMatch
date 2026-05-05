@@ -31,13 +31,32 @@ const request = async <T>(
   // 2. Handle error responses
   if (!response.ok) {
     let errorMessage = `API Error: ${response.status}`;
+    let errorCode: string | undefined;
+    let errorData: any = undefined;
     try {
       const errorJson = await response.json();
-      errorMessage = errorJson.message || errorJson.error || errorMessage;
+      errorData = errorJson;
+      // Backend envelope: { error: { message, code } }
+      if (errorJson?.error && typeof errorJson.error === "object") {
+        errorMessage = errorJson.error.message || errorMessage;
+        errorCode = errorJson.error.code;
+      } else if (typeof errorJson?.error === "string") {
+        errorMessage = errorJson.error;
+      } else if (errorJson?.message) {
+        errorMessage = errorJson.message;
+      }
     } catch {
       // Not JSON or no message
     }
-    throw new Error(errorMessage);
+    const err = new Error(errorMessage) as Error & {
+      status?: number;
+      code?: string;
+      data?: any;
+    };
+    err.status = response.status;
+    err.code = errorCode;
+    err.data = errorData;
+    throw err;
   }
 
   // 3. JSON responses: parse and unwrap { data }
