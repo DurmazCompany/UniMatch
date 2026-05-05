@@ -8,7 +8,10 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
 COPY . .
-RUN bunx prisma generate
+
+# Force fresh Prisma client generation (clear stale cache)
+RUN rm -rf node_modules/.prisma node_modules/@prisma/client && \
+    bunx prisma generate
 
 EXPOSE 3000
 
