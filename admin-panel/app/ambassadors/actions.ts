@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { ADMIN_ID } from "@/lib/auth";
+import { notifyUser } from "@/lib/notify";
 
 export async function approveAmbassador(applicationId: string) {
   const app = await prisma.ambassadorApplication.findUnique({
@@ -33,6 +34,12 @@ export async function approveAmbassador(applicationId: string) {
       },
     }),
   ]);
+  await notifyUser({
+    userId: app.userId,
+    type: "ambassador_approved",
+    title: "Tebrikler! 🎉",
+    body: "Kampüs Elçisi başvurun onaylandı.",
+  });
   revalidatePath("/ambassadors");
 }
 
@@ -59,5 +66,11 @@ export async function rejectAmbassador(
       },
     }),
   ]);
+  await notifyUser({
+    userId: app.userId,
+    type: "ambassador_rejected",
+    title: "Başvurun değerlendirildi",
+    body: `Sebep: ${reason}`,
+  });
   revalidatePath("/ambassadors");
 }

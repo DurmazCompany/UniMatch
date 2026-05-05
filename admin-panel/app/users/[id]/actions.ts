@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { ADMIN_ID } from "@/lib/auth";
+import { notifyUser } from "@/lib/notify";
 
 export async function banUser(
   profileId: string,
@@ -23,6 +24,12 @@ export async function banUser(
       },
     }),
   ]);
+  await notifyUser({
+    userId: profileId,
+    type: "banned",
+    title: "Hesabın askıya alındı",
+    body: reason,
+  });
   revalidatePath(`/users/${profileId}`);
 }
 
@@ -40,6 +47,12 @@ export async function unbanUser(profileId: string) {
       },
     }),
   ]);
+  await notifyUser({
+    userId: profileId,
+    type: "unbanned",
+    title: "Hesabın aktif",
+    body: "Hesabın yeniden aktifleştirildi.",
+  });
   revalidatePath(`/users/${profileId}`);
 }
 
@@ -62,6 +75,12 @@ export async function grantPremium(
       },
     }),
   ]);
+  await notifyUser({
+    userId: profileId,
+    type: "premium_granted",
+    title: "Premium aktivasyon!",
+    body: `${tier === "ask" ? "Aşk" : "Flört"} premium hesabına eklendi.`,
+  });
   revalidatePath(`/users/${profileId}`);
 }
 
@@ -83,6 +102,12 @@ export async function revokePremium(profileId: string) {
       },
     }),
   ]);
+  await notifyUser({
+    userId: profileId,
+    type: "premium_revoked",
+    title: "Premium iptal edildi",
+    body: "Premium aboneliğin sona erdi.",
+  });
   revalidatePath(`/users/${profileId}`);
 }
 
@@ -101,5 +126,11 @@ export async function changeRole(
       },
     }),
   ]);
+  await notifyUser({
+    userId: profileId,
+    type: "role_changed",
+    title: "Rol güncellendi",
+    body: `Yeni rolün: ${role}`,
+  });
   revalidatePath(`/users/${profileId}`);
 }

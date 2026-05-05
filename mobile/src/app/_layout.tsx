@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -31,6 +31,7 @@ import {
   addNotificationResponseListener,
   addNotificationListener,
   clearBadgeCount,
+  handleAdminNotification,
 } from "@/lib/notifications";
 import type { Subscription } from "expo-notifications";
 import { theme } from "@/lib/theme";
@@ -73,6 +74,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
   const router = useRouter();
+  const queryClientInstance = useQueryClient();
   const notificationResponseListener = useRef<Subscription | null>(null);
 
   // Initialize RevenueCat and sync blocks when user is authenticated
@@ -112,6 +114,8 @@ function RootLayoutNav() {
           queryClient.invalidateQueries({ queryKey: ["matches"] });
           queryClient.invalidateQueries({ queryKey: ["match", data.matchId] });
         }
+        // Admin-driven notifications (ban, premium, role, ambassador, etc.)
+        handleAdminNotification(data, queryClientInstance);
       });
 
       return () => {
@@ -121,7 +125,7 @@ function RootLayoutNav() {
         foregroundListener.remove();
       };
     }
-  }, [session?.user?.id, router]);
+  }, [session?.user?.id, router, queryClientInstance]);
 
   // Redirect based on session state
   useEffect(() => {

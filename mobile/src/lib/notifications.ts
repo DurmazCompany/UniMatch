@@ -1,7 +1,8 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
+import type { QueryClient } from "@tanstack/react-query";
 import { api } from "./api/api";
 
 // Configure notification handler
@@ -83,4 +84,49 @@ export function addNotificationResponseListener(
 // Clear badge count
 export async function clearBadgeCount(): Promise<void> {
   await Notifications.setBadgeCountAsync(0);
+}
+
+// Handle admin-triggered notifications: invalidate React Query caches and
+// surface UX where appropriate (e.g. ban alert).
+export function handleAdminNotification(
+  data: any,
+  queryClient: QueryClient,
+): void {
+  const type = data?.type;
+  if (!type) return;
+
+  switch (type) {
+    case "banned":
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      Alert.alert(
+        "Hesap askıya alındı",
+        data?.body ||
+          "Hesabın askıya alındı. Detaylar için destek ile iletişime geç.",
+        [{ text: "Tamam" }],
+      );
+      break;
+    case "unbanned":
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      break;
+    case "premium_granted":
+    case "premium_revoked":
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      break;
+    case "ambassador_approved":
+    case "ambassador_rejected":
+      queryClient.invalidateQueries({ queryKey: ["ambassador-me"] });
+      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      break;
+    case "role_changed":
+      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      break;
+    case "event_deleted":
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      break;
+    default:
+      break;
+  }
 }

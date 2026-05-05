@@ -16,6 +16,8 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(1, "BETTER_AUTH_SECRET is required"),
   // RevenueCat webhook auth (optional in dev)
   REVENUECAT_WEBHOOK_SECRET: z.string().optional().default(""),
+  // Shared secret for admin panel -> backend notify endpoint
+  ADMIN_PANEL_SECRET: z.string().min(16).default("dev-admin-secret-change-in-prod"),
 });
 
 /**
