@@ -110,10 +110,18 @@ export default function EditProfileScreen() {
           uploadedPhotos.push(photo);
         }
       }
+      // Backend requires ALL profile fields — pull existing values from profile and merge edits
+      if (!profile) throw new Error("Profile not loaded");
       const payload = {
+        name: profile.name,
+        birthDate: typeof profile.birthDate === "string" ? profile.birthDate : new Date(profile.birthDate).toISOString(),
+        gender: profile.gender,
+        department: profile.department,
+        year: profile.year,
+        university: profile.university,
         bio,
-        photos: JSON.stringify(uploadedPhotos),
-        hobbies: JSON.stringify(selectedHobbies),
+        photos: uploadedPhotos,
+        hobbies: selectedHobbies,
       };
       return api.post("/api/profile", payload);
     },
