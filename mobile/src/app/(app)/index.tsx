@@ -741,13 +741,30 @@ export default function DiscoverScreen() {
           </>
         ) : (
           /* Empty / limit reached state */
+          <View style={{ flex: 1 }}>
+            {/* Mini header with wallet always visible */}
+            <View
+              style={{
+                paddingTop: insets.top + 8,
+                paddingHorizontal: 20,
+                paddingBottom: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text style={{ color: Colors.textOnDark, fontSize: 28, fontFamily: "DMSerifDisplay_400Regular" }}>Keşfet</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <WalletPill />
+                {filterButton}
+              </View>
+            </View>
           <View
             style={{
               flex: 1,
               alignItems: "center",
               justifyContent: "center",
               paddingHorizontal: 32,
-              paddingTop: insets.top,
             }}
           >
             {limitReached ? (
@@ -832,9 +849,7 @@ export default function DiscoverScreen() {
               </>
             )}
 
-            <View style={{ position: "absolute", top: insets.top + 8, right: 20 }} testID="filter-button-empty-wrap">
-              {filterButton}
-            </View>
+          </View>
           </View>
         )}
       </Animated.View>

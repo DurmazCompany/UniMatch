@@ -653,6 +653,63 @@ export default function PaywallScreen() {
           />
         ))}
 
+        {/* Boost à la carte — info card pointing to /boost */}
+        <View style={{ marginTop: 28, marginBottom: 4 }}>
+          <Text style={{ color: Colors.textDark, fontSize: 20, fontFamily: "DMSans_700Bold" }}>
+            ⚡ Boost Al
+          </Text>
+          <Text style={{ color: Colors.textMuted, fontSize: 14, fontFamily: "DMSans_400Regular", marginTop: 4, marginBottom: 16, lineHeight: 20 }}>
+            30 dakika için profilini 3x daha fazla kişiye göster
+          </Text>
+        </View>
+
+        {[
+          { id: "boost_1", label: "1× Boost (30 dk)", coinCost: 750, badge: null },
+          { id: "boost_3", label: "3× Boost paketi", coinCost: 2000, badge: "fırsat" },
+          { id: "boost_10", label: "10× Boost paketi", coinCost: 6000, badge: "en iyi" },
+        ].map((b) => (
+          <Pressable
+            key={b.id}
+            onPress={() => { router.push("/boost"); }}
+            style={({ pressed }) => ({
+              backgroundColor: Colors.white,
+              borderRadius: Radius.card,
+              borderWidth: 1,
+              borderColor: "rgba(0,0,0,0.06)",
+              padding: 16,
+              marginBottom: 10,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              opacity: pressed ? 0.85 : 1,
+              shadowColor: "#000",
+              shadowOpacity: 0.04,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 1 },
+              elevation: 1,
+            })}
+          >
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primaryPale, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="flash" size={22} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={{ color: Colors.textDark, fontSize: 15, fontFamily: "DMSans_600SemiBold" }}>{b.label}</Text>
+                {b.badge ? (
+                  <View style={{ backgroundColor: Colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ color: Colors.white, fontSize: 9, fontFamily: "DMSans_700Bold", textTransform: "uppercase" }}>{b.badge}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                <Ionicons name="ellipse" size={10} color="#FFD66B" />
+                <Text style={{ color: Colors.textMuted, fontSize: 13, fontFamily: "DMSans_500Medium" }}>{b.coinCost.toLocaleString("tr-TR")} coin</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </Pressable>
+        ))}
+
         <Pressable
           onPress={handleRestore}
           disabled={restoreMutation.isPending}
