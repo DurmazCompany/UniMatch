@@ -12,6 +12,22 @@ type HonoVars = {
 
 export const walletRouter = new Hono<HonoVars>();
 
+walletRouter.get("/history", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+
+  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+  if (!profile) return c.json({ error: { message: "Profile not found", code: "PROFILE_NOT_FOUND" } }, 404);
+
+  const limit = Math.min(parseInt(c.req.query("limit") ?? "50", 10) || 50, 200);
+  const entries = await prisma.coinLedger.findMany({
+    where: { userId: profile.id },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return c.json({ data: entries });
+});
+
 walletRouter.get("/", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);

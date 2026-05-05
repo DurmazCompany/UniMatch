@@ -63,6 +63,25 @@ giftsRouter.post(
   }
 );
 
+giftsRouter.get("/match/:matchId", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+
+  const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+  if (!profile) return c.json({ error: { message: "Profile not found", code: "PROFILE_NOT_FOUND" } }, 404);
+
+  const matchId = c.req.param("matchId");
+  const gifts = await prisma.giftSent.findMany({
+    where: {
+      matchId,
+      OR: [{ senderId: profile.id }, { receiverId: profile.id }],
+    },
+    include: { gift: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return c.json({ data: gifts });
+});
+
 giftsRouter.get("/received", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);

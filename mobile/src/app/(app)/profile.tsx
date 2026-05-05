@@ -503,6 +503,11 @@ export default function ProfileScreen() {
           {/* Settings list */}
           <UMCard dark style={{ padding: 0, marginBottom: Spacing.xxl, overflow: "hidden" }}>
             <SettingsItem
+              iconName="wallet-outline"
+              label="Bakiyem"
+              onPress={() => router.push("/wallet")}
+            />
+            <SettingsItem
               iconName="notifications-outline"
               label="Bildirimler"
               onPress={() => router.push("/(app)/settings/notifications")}

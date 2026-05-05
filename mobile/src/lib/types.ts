@@ -85,3 +85,33 @@ export interface SwipeResponse {
   match?: Match;
   swipesLeft: number;
 }
+
+export interface GiftCatalogItem {
+  id: string;
+  nameTr: string;
+  emoji: string;
+  coinCost: number;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface GiftSent {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  giftId: string;
+  matchId: string | null;
+  coinCost: number;
+  createdAt: string;
+  gift?: GiftCatalogItem;
+  sender?: { id: string; name?: string; photos?: string };
+}
+
+export interface CoinLedgerEntry {
+  id: string;
+  delta: number;
+  reason: string;
+  refType: string | null;
+  refId: string | null;
+  createdAt: string;
+}

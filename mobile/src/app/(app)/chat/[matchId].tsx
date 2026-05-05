@@ -24,7 +24,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/lib/api/api";
 import { authClient } from "@/lib/auth/auth-client";
 import { useSession } from "@/lib/auth/use-session";
-import { Match, Message, Profile } from "@/lib/types";
+import { Match, Message, Profile, GiftSent } from "@/lib/types";
+import { GiftPicker } from "@/components/chat/GiftPicker";
+import { GiftBubble } from "@/components/chat/GiftBubble";
 import { format, isToday, isYesterday } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Colors, Radius } from "@/lib/theme";
@@ -153,6 +155,7 @@ export default function ChatScreen() {
   const isMounted = useRef(true);
 
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [showGiftPicker, setShowGiftPicker] = useState(false);
 
   const [viewedEphemeralIds, setViewedEphemeralIds] = useState<Set<string>>(new Set());
   const [ephemeralViewerUri, setEphemeralViewerUri] = useState<string | null>(null);
@@ -281,22 +284,51 @@ export default function ChatScreen() {
   const partner = match ? getPartnerProfile(match, myUserId) : null;
   const partnerPhotos = partner ? parsePhotos(partner.photos) : [];
 
-
-  const messagesWithSeparators = useMemo(() => {
-    const msgs = messages ?? [];
-    const result: (Message | { type: "separator"; date: string })[] = [];
-    let lastDate: string | null = null;
-
-    for (const msg of msgs) {
-      const msgDate = formatDateSeparator(msg.createdAt);
-      if (msgDate !== lastDate) {
-        result.push({ type: "separator", date: msgDate });
-        lastDate = msgDate;
+  const { data: matchGifts } = useQuery<GiftSent[] | null>({
+    queryKey: ["gifts-by-match", matchId],
+    queryFn: async () => {
+      try {
+        return await api.get<GiftSent[]>(`/api/gifts/match/${matchId}`);
+      } catch {
+        return [];
       }
-      result.push(msg);
+    },
+    refetchInterval: 5000,
+    enabled: !!matchId,
+  });
+
+  type ChatItem =
+    | { kind: "message"; data: Message; createdAt: string }
+    | { kind: "gift"; data: GiftSent; createdAt: string }
+    | { kind: "separator"; date: string };
+
+  const messagesWithSeparators = useMemo<ChatItem[]>(() => {
+    const msgs = (messages ?? []).map((m) => ({
+      kind: "message" as const,
+      data: m,
+      createdAt: m.createdAt,
+    }));
+    const gifts = (matchGifts ?? []).map((g) => ({
+      kind: "gift" as const,
+      data: g,
+      createdAt: g.createdAt,
+    }));
+    type DatedItem = Extract<ChatItem, { createdAt: string }>;
+    const merged: DatedItem[] = ([...msgs, ...gifts] as DatedItem[]).sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const result: ChatItem[] = [];
+    let lastDate: string | null = null;
+    for (const item of merged) {
+      const dateLabel = formatDateSeparator(item.createdAt);
+      if (dateLabel !== lastDate) {
+        result.push({ kind: "separator", date: dateLabel });
+        lastDate = dateLabel;
+      }
+      result.push(item);
     }
     return result;
-  }, [messages]);
+  }, [messages, matchGifts]);
 
   const { mutate: sendMessage, isPending: isSending } = useMutation({
     mutationFn: (payload: { content: string; messageType?: string }) =>
@@ -454,8 +486,8 @@ export default function ChatScreen() {
   }, [currentEphemeralId]);
 
   const renderMessage = useCallback(
-    ({ item, index }: { item: Message | { type: "separator"; date: string }; index: number }) => {
-      if ("type" in item && item.type === "separator") {
+    ({ item, index }: { item: ChatItem; index: number }) => {
+      if (item.kind === "separator") {
         return (
           <View style={{ alignItems: "center", marginVertical: 16 }}>
             <View
@@ -474,13 +506,29 @@ export default function ChatScreen() {
         );
       }
 
-      const msg = item as Message;
+      if (item.kind === "gift") {
+        const g = item.data;
+        const isMine = g.senderId === myProfile?.id;
+        const senderName = isMine ? "Sen" : partner?.name;
+        return (
+          <View style={{ paddingHorizontal: 16 }}>
+            <GiftBubble
+              emoji={g.gift?.emoji ?? "🎁"}
+              giftName={g.gift?.nameTr ?? "Hediye"}
+              senderName={senderName}
+              isMine={isMine}
+            />
+          </View>
+        );
+      }
+
+      const msg = item.data;
       const isMe = msg.senderId === myProfile?.id;
       const nextItem = messagesWithSeparators[index + 1];
       const isLastInGroup =
         index === messagesWithSeparators.length - 1 ||
-        (nextItem && "type" in nextItem) ||
-        (nextItem && !("type" in nextItem) && (nextItem as Message).senderId !== msg.senderId);
+        (nextItem && nextItem.kind !== "message") ||
+        (nextItem && nextItem.kind === "message" && nextItem.data.senderId !== msg.senderId);
 
       const isPhoto = msg.messageType === "photo";
       const isEphemeral = msg.messageType === "ephemeral_photo";
@@ -705,7 +753,11 @@ export default function ChatScreen() {
           data={messagesWithSeparators}
           renderItem={renderMessage}
           keyExtractor={(item, index) =>
-            "type" in item ? `sep-${index}` : (item as Message).id
+            item.kind === "separator"
+              ? `sep-${index}`
+              : item.kind === "gift"
+              ? `gift-${item.data.id}`
+              : item.data.id
           }
           contentContainerStyle={{ paddingVertical: 16, paddingBottom: 8 }}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -887,6 +939,24 @@ export default function ChatScreen() {
                   >
                     <Ionicons name="flame-outline" size={18} color={Colors.coral} />
                   </Pressable>
+                  <Pressable
+                    testID="gift-button"
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowGiftPicker(true);
+                    }}
+                    style={({ pressed }) => ({
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      backgroundColor: "rgba(124,111,247,0.18)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <Ionicons name="gift-outline" size={18} color={Colors.primaryLight} />
+                  </Pressable>
                 </>
               ) : null}
 
@@ -949,6 +1019,15 @@ export default function ChatScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {partner ? (
+        <GiftPicker
+          visible={showGiftPicker}
+          onClose={() => setShowGiftPicker(false)}
+          receiverId={partner.id}
+          matchId={matchId}
+        />
+      ) : null}
     </View>
   );
 }
