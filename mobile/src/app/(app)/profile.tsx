@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Image, StatusBar, Switch } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
@@ -33,7 +33,7 @@ const ERROR_RED = "#FF6B6B";
 const SUCCESS_GREEN = "#4CD964";
 const WARN_YELLOW = "#FFCC00";
 
-function ProfilePowerBar({ power }: { power: number }) {
+const ProfilePowerBar = memo(function ProfilePowerBar({ power }: { power: number }) {
   const pct = Math.min(power, 100);
   const color = pct < 40 ? ERROR_RED : pct < 70 ? WARN_YELLOW : SUCCESS_GREEN;
   const shimmer = useSharedValue(-1);
@@ -98,9 +98,9 @@ function ProfilePowerBar({ power }: { power: number }) {
       ) : null}
     </UMCard>
   );
-}
+});
 
-function ZodiacSection({ birthDate }: { birthDate: string }) {
+const ZodiacSection = memo(function ZodiacSection({ birthDate }: { birthDate: string }) {
   const sign = getZodiacSign(birthDate);
   const info = getZodiacInfo(sign);
 
@@ -167,7 +167,7 @@ function ZodiacSection({ birthDate }: { birthDate: string }) {
       </LinearGradient>
     </View>
   );
-}
+});
 
 function parsePhotos(photos: string | string[]): string[] {
   if (Array.isArray(photos)) return photos;
@@ -253,13 +253,13 @@ export default function ProfileScreen() {
     },
   });
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await authClient.signOut();
     await invalidateSession();
     router.replace("/");
-  };
+  }, [invalidateSession]);
 
-  const handleBlockUser = async () => {
+  const handleBlockUser = useCallback(async () => {
     if (!profile) return;
     Alert.alert(
       "Kullanıcıyı Engelle",
@@ -283,7 +283,7 @@ export default function ProfileScreen() {
         },
       ]
     );
-  };
+  }, [profile, blockUser]);
 
   if (isLoading) {
     return (
@@ -307,7 +307,7 @@ export default function ProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.bgDark }} testID="profile-screen">
       <StatusBar barStyle="light-content" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
         {isAsk && isInvisible ? (
           <View
             style={{
@@ -451,68 +451,103 @@ export default function ProfileScreen() {
           <ZodiacSection birthDate={profile.birthDate} />
 
           {/* Who liked me */}
-          <UMCard dark style={{ marginBottom: 14 }}>
-            <Text style={{ color: Colors.textOnDark, fontSize: 15, fontFamily: "DMSans_700Bold", marginBottom: 12 }}>
-              Seni Beğenenler
-            </Text>
-            <View style={{ flexDirection: "row", marginBottom: 12 }}>
-              {[0, 1, 2].map((i) => (
-                <View
-                  key={i}
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 24,
-                    backgroundColor: i === 0 ? Colors.primaryLight : i === 1 ? Colors.primary : Colors.coral,
-                    marginLeft: i > 0 ? -14 : 0,
-                    borderWidth: 3,
-                    borderColor: Colors.cardDark,
-                  }}
-                />
-              ))}
-              {(whoLikedMe?.count ?? 0) > 3 ? (
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 24,
-                    backgroundColor: Colors.surfaceDark,
-                    marginLeft: -14,
-                    borderWidth: 2,
-                    borderColor: Colors.primary,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ color: Colors.primaryLight, fontSize: 12, fontFamily: "DMSans_700Bold" }}>
-                    +{(whoLikedMe?.count ?? 0) - 3}
-                  </Text>
-                </View>
-              ) : null}
+          <View
+            style={{
+              backgroundColor: Colors.cardDark,
+              borderRadius: Radius.card,
+              marginHorizontal: Spacing.xl,
+              marginBottom: Spacing.lg,
+              padding: Spacing.lg,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              {/* Blurred avatar stack */}
+              <View style={{ flexDirection: "row" }}>
+                {[0, 1, 2].map((i) => (
+                  <View
+                    key={i}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      marginLeft: i > 0 ? -12 : 0,
+                      borderWidth: 2,
+                      borderColor: Colors.bgDark,
+                      overflow: "hidden",
+                      backgroundColor: Colors.surfaceDark,
+                    }}
+                  >
+                    {/* Blurred placeholder */}
+                    <View
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        backgroundColor:
+                          i === 0
+                            ? Colors.primaryLight
+                            : i === 1
+                            ? Colors.primary
+                            : Colors.coral,
+                        opacity: 0.6,
+                      }}
+                    />
+                  </View>
+                ))}
+              </View>
+              <Text
+                style={{
+                  fontFamily: "DMSans_600SemiBold",
+                  fontSize: 15,
+                  color: Colors.white,
+                  flex: 1,
+                }}
+              >
+                {whoLikedMe?.count ?? 0} kişi seni beğendi
+              </Text>
             </View>
-            <Text style={{ color: Colors.textOnDarkMuted, fontSize: 14, fontFamily: "DMSans_400Regular", marginBottom: 14 }}>
-              {whoLikedMe?.count ?? 0} kişi seni beğendi
-            </Text>
+
             <Pressable
               testID="premium-upgrade-button"
               onPress={() => router.push("/who-liked-me")}
-              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+              style={({ pressed }) => ({
+                backgroundColor: Colors.primaryPale ?? "rgba(124,111,247,0.12)",
+                borderRadius: Radius.pill,
+                paddingVertical: 12,
+                alignItems: "center",
+                opacity: pressed ? 0.8 : 1,
+              })}
             >
-              <UMButton variant="ghost" label="Hepsini gör" onPress={() => router.push("/who-liked-me")} />
+              <Text
+                style={{
+                  fontFamily: "DMSans_700Bold",
+                  fontSize: 15,
+                  color: Colors.primary,
+                }}
+              >
+                Hepsini Gör
+              </Text>
             </Pressable>
-          </UMCard>
+          </View>
 
           {/* Settings list */}
-          <UMCard dark style={{ padding: 0, marginBottom: Spacing.xxl, overflow: "hidden" }}>
+          <View
+            style={{
+              backgroundColor: Colors.cardDark,
+              borderRadius: Radius.card,
+              marginHorizontal: Spacing.xl,
+              overflow: "hidden",
+              marginBottom: Spacing.xxl,
+            }}
+          >
             {profile.role === "ambassador" || profile.role === "admin" ? (
-              <SettingsItem
-                iconName="megaphone-outline"
+              <MenuItem
+                icon="megaphone-outline"
                 label="Etkinliklerim"
                 onPress={() => router.push("/events")}
               />
             ) : (
-              <SettingsItem
-                iconName="megaphone-outline"
+              <MenuItem
+                icon="megaphone-outline"
                 label={
                   ambassadorApp?.status === "pending"
                     ? "Elçi Başvurun İnceleniyor"
@@ -529,116 +564,226 @@ export default function ProfileScreen() {
                 }
               />
             )}
-            <SettingsItem
-              iconName="wallet-outline"
+            <View
+              style={{
+                height: 0.5,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                marginLeft: 72,
+              }}
+            />
+            <MenuItem
+              icon="wallet-outline"
               label="Bakiyem"
               onPress={() => router.push("/wallet")}
             />
-            <SettingsItem
-              iconName="notifications-outline"
+            <View
+              style={{
+                height: 0.5,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                marginLeft: 72,
+              }}
+            />
+            <MenuItem
+              icon="notifications-outline"
               label="Bildirimler"
               onPress={() => router.push("/(app)/settings/notifications")}
             />
-            <SettingsItem
-              iconName="eye-off-outline"
-              label="Görünmezlik Modu"
-              onPress={isAsk ? undefined : () => router.push("/paywall")}
-              rightElement={
-                isAsk ? (
-                  <Switch
-                    value={isInvisible}
-                    onValueChange={handleToggleInvisibility}
-                    trackColor={{ false: "rgba(255,255,255,0.1)", true: Colors.primary }}
-                    thumbColor={Colors.white}
-                    testID="invisibility-switch"
-                  />
-                ) : (
-                  <Ionicons name="lock-closed" size={16} color={Colors.textOnDarkMuted} />
-                )
-              }
+            <View
+              style={{
+                height: 0.5,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                marginLeft: 72,
+              }}
             />
-            <SettingsItem iconName="shield-checkmark-outline" label="Gizlilik ve Güvenlik" />
-            <SettingsItem iconName="help-circle-outline" label="Yardım ve Destek" />
-            <SettingsItem
-              iconName="ban-outline"
+            <Pressable
+              onPress={isAsk ? undefined : () => router.push("/paywall")}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 14,
+                paddingHorizontal: Spacing.lg,
+                gap: 14,
+                backgroundColor: pressed ? "rgba(255,255,255,0.03)" : "transparent",
+              })}
+            >
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 21,
+                  backgroundColor: Colors.surfaceDark,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Ionicons name="eye-off-outline" size={20} color={Colors.primary} />
+              </View>
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: "DMSans_600SemiBold",
+                  fontSize: 15,
+                  color: Colors.white,
+                }}
+              >
+                Görünmezlik Modu
+              </Text>
+              {isAsk ? (
+                <Switch
+                  value={isInvisible}
+                  onValueChange={handleToggleInvisibility}
+                  trackColor={{ false: "rgba(255,255,255,0.1)", true: Colors.primary }}
+                  thumbColor={Colors.white}
+                  testID="invisibility-switch"
+                />
+              ) : (
+                <Ionicons name="lock-closed" size={16} color={Colors.textOnDarkMuted} />
+              )}
+            </Pressable>
+            <View
+              style={{
+                height: 0.5,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                marginLeft: 72,
+              }}
+            />
+            <MenuItem
+              icon="shield-checkmark-outline"
+              label="Gizlilik ve Güvenlik"
+              showChevron
+            />
+            <View
+              style={{
+                height: 0.5,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                marginLeft: 72,
+              }}
+            />
+            <MenuItem
+              icon="help-circle-outline"
+              label="Yardım ve Destek"
+              showChevron
+            />
+            <View
+              style={{
+                height: 0.5,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                marginLeft: 72,
+              }}
+            />
+            <MenuItem
+              icon="ban-outline"
               label="Engelle"
               onPress={handleBlockUser}
-              isDestructive
+              color="#FF4444"
+              iconBg="rgba(255,68,68,0.12)"
             />
-            <SettingsItem
-              iconName="log-out-outline"
+            <View
+              style={{
+                height: 0.5,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                marginLeft: 72,
+              }}
+            />
+            <MenuItem
+              icon="log-out-outline"
               label="Çıkış Yap"
               onPress={handleSignOut}
-              isLast
-              isDestructive
+              color="#FF4444"
+              iconBg="rgba(255,68,68,0.12)"
+              showChevron={false}
             />
-          </UMCard>
+          </View>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-function SettingsItem({
-  iconName,
+const MenuItem = memo(function MenuItem({
+  icon,
   label,
   onPress,
-  isLast,
-  isDestructive,
-  rightElement,
+  color = Colors.white,
+  iconBg = Colors.surfaceDark,
+  showLock = false,
+  showChevron = true,
 }: {
-  iconName: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress?: () => void;
-  isLast?: boolean;
-  isDestructive?: boolean;
-  rightElement?: React.ReactNode;
+  color?: string;
+  iconBg?: string;
+  showLock?: boolean;
+  showChevron?: boolean;
 }) {
-  const color = isDestructive ? ERROR_RED : Colors.textOnDark;
-  const iconBg = isDestructive ? "rgba(255,107,107,0.12)" : "rgba(124,111,247,0.15)";
-  const iconColor = isDestructive ? ERROR_RED : Colors.primary;
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: Spacing.lg,
         paddingVertical: 14,
+        paddingHorizontal: Spacing.lg,
         gap: 14,
-        borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: "rgba(255,255,255,0.06)",
         backgroundColor: pressed ? "rgba(255,255,255,0.03)" : "transparent",
       })}
     >
+      {/* Icon circle */}
       <View
         style={{
-          width: 38,
-          height: 38,
-          borderRadius: 19,
+          width: 42,
+          height: 42,
+          borderRadius: 21,
           backgroundColor: iconBg,
           alignItems: "center",
           justifyContent: "center",
+          flexShrink: 0,
         }}
       >
-        <Ionicons name={iconName} size={18} color={iconColor} />
+        <Ionicons
+          name={icon}
+          size={20}
+          color={color === Colors.white ? Colors.primary : color}
+        />
       </View>
+      {/* Label */}
       <Text
         style={{
           flex: 1,
-          color,
-          fontSize: 15,
           fontFamily: "DMSans_600SemiBold",
-          letterSpacing: 0.1,
+          fontSize: 15,
+          color: color,
         }}
       >
         {label}
       </Text>
-      {rightElement !== undefined
-        ? rightElement
-        : !isDestructive
-        ? <Ionicons name="chevron-forward-outline" size={18} color={Colors.textOnDarkMuted} />
-        : null}
+      {/* Lock badge (premium) */}
+      {showLock && (
+        <View
+          style={{
+            backgroundColor: "#FFD700",
+            borderRadius: 10,
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 10,
+              fontFamily: "DMSans_600SemiBold",
+              color: "#1C1C2E",
+            }}
+          >
+            PLUS
+          </Text>
+        </View>
+      )}
+      {/* Chevron */}
+      {showChevron && (
+        <Ionicons name="chevron-forward" size={18} color={Colors.textOnDarkMuted} />
+      )}
     </Pressable>
   );
-}
+});

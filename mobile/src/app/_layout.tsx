@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { View, Text, Pressable, ActivityIndicator, useColorScheme } from "react-native";
+import { Stack, router } from "expo-router";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
@@ -39,7 +39,14 @@ import { usePrivacyStore } from "@/lib/state/privacyStore";
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
@@ -73,7 +80,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 
 function RootLayoutNav() {
   const { data: session, isLoading } = useSession();
-  const router = useRouter();
   const queryClientInstance = useQueryClient();
   const notificationResponseListener = useRef<Subscription | null>(null);
 

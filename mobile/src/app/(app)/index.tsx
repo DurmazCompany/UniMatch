@@ -28,7 +28,6 @@ import { Profile, Match, SwipeResponse } from "@/lib/types";
 import { useSession } from "@/lib/auth/use-session";
 import { Colors, Radius, Spacing } from "@/lib/theme";
 import { UMButton } from "@/components/ui";
-import { WalletPill } from "@/components/WalletPill";
 import { getZodiacSign, ZodiacSign } from "@/lib/astrology";
 import { useWallet } from "@/lib/hooks/useWallet";
 import { openPaywallOnError } from "@/lib/hooks/usePaywallOnError";
@@ -333,6 +332,8 @@ export default function DiscoverScreen() {
   const [lastSwipeDirection, setLastSwipeDirection] = useState<"like" | "pass" | "super" | null>(null);
   const [filterVisible, setFilterVisible] = useState<boolean>(false);
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({ zodiacSigns: [], years: [], hobbies: [], filterYear: null, lifestyle: null });
+  const [actionMenuOpen, setActionMenuOpen] = useState<boolean>(false);
+  const [tab, setTab] = useState<"following" | "foryou">("foryou");
 
   const isMounted = useRef<boolean>(true);
   const swipeStackRef = useRef<SwipeStackRef>(null);
@@ -608,135 +609,150 @@ export default function DiscoverScreen() {
                   })()
                 ) : null}
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <WalletPill />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                {/* UniCoin balance pill */}
+                <Pressable
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    backgroundColor: Colors.cardDark,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: Radius.pill,
+                  }}
+                  onPress={() => router.push("/wallet")}
+                >
+                  <Text style={{ fontSize: 16 }}>🪙</Text>
+                  <Text
+                    style={{
+                      fontFamily: "DMSans_600SemiBold",
+                      fontSize: 14,
+                      color: Colors.white,
+                    }}
+                  >
+                    {wallet?.balance ?? 0}
+                  </Text>
+                  <Ionicons name="add-circle" size={16} color={Colors.primary} />
+                </Pressable>
+
+                {/* Filter icon */}
                 {filterButton}
               </View>
             </View>
 
-            {/* Card area */}
+            {/* Tab Selector */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 24,
+                paddingVertical: 12,
+              }}
+            >
+              <Pressable onPress={() => setTab("following")}>
+                <Text
+                  style={{
+                    fontFamily: tab === "following" ? "DMSans_700Bold" : "DMSans_400Regular",
+                    fontSize: 16,
+                    color: tab === "following" ? Colors.white : Colors.textOnDarkMuted,
+                  }}
+                >
+                  Takip
+                </Text>
+              </Pressable>
+              <View style={{ width: 1, height: 16, backgroundColor: Colors.textOnDarkMuted, opacity: 0.4 }} />
+              <Pressable onPress={() => setTab("foryou")}>
+                <Text
+                  style={{
+                    fontFamily: tab === "foryou" ? "DMSans_700Bold" : "DMSans_400Regular",
+                    fontSize: 16,
+                    color: tab === "foryou" ? Colors.white : Colors.textOnDarkMuted,
+                  }}
+                >
+                  Senin İçin
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Card area - Full screen */}
             <View
               style={{
                 flex: 1,
-                marginHorizontal: 16,
-                marginBottom: Spacing.sm,
-                borderRadius: Radius.card,
                 overflow: "hidden",
               }}
             >
               <SwipeStack ref={swipeStackRef} profiles={filteredProfiles} onSwipe={handleSwipe} />
             </View>
 
-            {/* Swipes left counter */}
-            <Text
-              style={{
-                color: Colors.textOnDarkMuted,
-                fontSize: 12,
-                fontFamily: "DMSans_500Medium",
-                textAlign: "center",
-                marginBottom: 8,
-              }}
-            >
-              {swipesLeft} swipe kaldı
-            </Text>
-
-            {/* Action bar */}
+            {/* Swipe Buttons */}
             <View
               style={{
                 flexDirection: "row",
-                justifyContent: "center",
-                alignItems: "center",
                 gap: 16,
+                justifyContent: "center",
+                marginTop: 16,
                 paddingHorizontal: 20,
-                paddingBottom: 100,
-                paddingTop: 8,
+                paddingBottom: insets.bottom + 20,
               }}
             >
-              {/* Rewind */}
-              <View>
-                <Pressable
-                  onPress={handleRewind}
-                  disabled={!isCrush && !lastSwipedProfile}
-                  testID="rewind-button"
-                  style={({ pressed }) => ({
-                    width: 48,
-                    height: 48,
-                    borderRadius: 24,
-                    backgroundColor: Colors.cardDark,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: isCrush
-                      ? pressed
-                        ? 0.7
-                        : 0.85
-                      : !lastSwipedProfile
-                      ? 0.4
-                      : pressed
-                      ? 0.7
-                      : 1,
-                  })}
-                >
-                  <Ionicons
-                    name={isCrush ? "lock-closed-outline" : "refresh-outline"}
-                    size={22}
-                    color={isCrush ? Colors.textOnDarkMuted : Colors.textOnDark}
-                  />
-                </Pressable>
-                {!isCrush && !rewindsUnlimited ? (
-                  <View
-                    testID="rewind-badge"
-                    style={{
-                      position: "absolute",
-                      bottom: -2,
-                      right: -2,
-                      minWidth: 18,
-                      height: 18,
-                      borderRadius: 9,
-                      paddingHorizontal: 5,
-                      backgroundColor: rewindsLeft === 0 ? Colors.coral : Colors.primary,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 2,
-                      borderColor: Colors.bgDark,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontFamily: "DMSans_700Bold",
-                      }}
-                    >
-                      {rewindsLeft}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-
-              {/* Pass */}
-              <UMButton variant="swipe-no" onPress={() => handleActionButton("pass")} fullWidth={false} />
-
-              {/* Super-like */}
+              {/* X button */}
               <Pressable
-                onPress={() => handleActionButton("super")}
-                testID="super-button"
+                onPress={() => handleActionButton("pass")}
                 style={({ pressed }) => ({
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
-                  backgroundColor: Colors.primaryPale,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: Colors.white,
                   alignItems: "center",
                   justifyContent: "center",
                   opacity: pressed ? 0.8 : 1,
+                  shadowColor: "#000",
+                  shadowOpacity: 0.12,
+                  shadowRadius: 8,
+                  elevation: 4,
                 })}
               >
-                <Ionicons name="star" size={24} color={Colors.primary} />
+                <Ionicons name="close" size={28} color={Colors.cardDark} />
               </Pressable>
 
-              {/* Like */}
-              <View testID="like-button-wrap">
-                <UMButton variant="swipe-yes" onPress={() => handleActionButton("like")} fullWidth={false} />
-              </View>
+              {/* Super Like - middle, smaller */}
+              <Pressable
+                onPress={() => handleActionButton("super")}
+                style={({ pressed }) => ({
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: Colors.surfaceDark,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  alignSelf: "center",
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Ionicons name="star" size={22} color="#FFD700" />
+              </Pressable>
+
+              {/* Heart button */}
+              <Pressable
+                onPress={() => handleActionButton("like")}
+                style={({ pressed }) => ({
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: Colors.primary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.9 : 1,
+                  shadowColor: Colors.primary,
+                  shadowOpacity: 0.4,
+                  shadowRadius: 12,
+                  elevation: 6,
+                })}
+              >
+                <Ionicons name="heart" size={28} color={Colors.white} />
+              </Pressable>
             </View>
           </>
         ) : (
@@ -753,9 +769,33 @@ export default function DiscoverScreen() {
                 justifyContent: "space-between",
               }}
             >
-              <Text style={{ color: Colors.textOnDark, fontSize: 28, fontFamily: "DMSerifDisplay_400Regular" }}>Keşfet</Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <WalletPill />
+              <Text style={{ color: Colors.white, fontSize: 32, fontFamily: "DMSerifDisplay_400Regular" }}>Keşfet</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                {/* UniCoin balance pill */}
+                <Pressable
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    backgroundColor: Colors.cardDark,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: Radius.pill,
+                  }}
+                  onPress={() => router.push("/wallet")}
+                >
+                  <Text style={{ fontSize: 16 }}>🪙</Text>
+                  <Text
+                    style={{
+                      fontFamily: "DMSans_600SemiBold",
+                      fontSize: 14,
+                      color: Colors.white,
+                    }}
+                  >
+                    {wallet?.balance ?? 0}
+                  </Text>
+                  <Ionicons name="add-circle" size={16} color={Colors.primary} />
+                </Pressable>
                 {filterButton}
               </View>
             </View>
@@ -826,21 +866,21 @@ export default function DiscoverScreen() {
               <>
                 <View
                   style={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: 40,
+                    width: 96,
+                    height: 96,
+                    borderRadius: 48,
                     backgroundColor: Colors.cardDark,
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: 24,
                   }}
                 >
-                  <Ionicons name="heart-outline" size={40} color={Colors.primaryLight} />
+                  <Ionicons name="heart-outline" size={40} color={Colors.primary} />
                 </View>
-                <Text style={{ color: Colors.textOnDark, fontSize: 24, fontFamily: "DMSerifDisplay_400Regular", textAlign: "center", marginBottom: 8 }}>
+                <Text style={{ color: Colors.white, fontSize: 22, fontFamily: "DMSans_700Bold", textAlign: "center", marginBottom: 8 }}>
                   Şimdilik yeni profil yok
                 </Text>
-                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 15, fontFamily: "DMSans_400Regular", textAlign: "center", marginBottom: 28, lineHeight: 22 }}>
+                <Text style={{ color: Colors.textOnDarkMuted, fontSize: 14, fontFamily: "DMSans_400Regular", textAlign: "center", marginBottom: 28, lineHeight: 20 }}>
                   Yakınındaki herkesi gördün. Daha sonra tekrar kontrol et.
                 </Text>
                 <View style={{ width: "100%" }}>

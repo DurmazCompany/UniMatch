@@ -9,12 +9,23 @@ interface UMInputProps extends TextInputProps {
 
 export function UMInput({ label, error, ...rest }: UMInputProps) {
   const [focused, setFocused] = useState(false);
+
+  // Determine textContentType for iOS
+  const getTextContentType = () => {
+    if (rest.secureTextEntry) return 'password';
+    if (rest.keyboardType === 'email-address') return 'emailAddress';
+    return undefined;
+  };
+
   return (
     <View style={{ gap: 6 }}>
       {label ? <Text style={[Typography.bodyBold, { color: Colors.textDark }]}>{label}</Text> : null}
       <TextInput
         placeholderTextColor={Colors.textMuted}
         {...rest}
+        // iOS password autofill support
+        textContentType={getTextContentType()}
+        autoComplete={rest.secureTextEntry ? 'password' : 'off'}
         onFocus={(e) => { setFocused(true); rest.onFocus?.(e); }}
         onBlur={(e) => { setFocused(false); rest.onBlur?.(e); }}
         style={[
