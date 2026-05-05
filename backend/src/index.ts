@@ -25,6 +25,7 @@ import { boostsRouter } from "./routes/boosts";
 import { ambassadorRouter } from "./routes/ambassador";
 import { usersRouter } from "./routes/users";
 import { adminNotifyRouter } from "./routes/admin-notify";
+import { reportsRouter } from "./routes/reports";
 
 const app = new Hono<{
   Variables: {
@@ -93,6 +94,7 @@ app.route("/api/gifts", giftsRouter);
 app.route("/api/boosts", boostsRouter);
 app.route("/api/ambassador", ambassadorRouter);
 app.route("/api/admin/notify", adminNotifyRouter);
+app.route("/api/reports", reportsRouter);
 
 const port = Number(process.env.PORT) || 3000;
 

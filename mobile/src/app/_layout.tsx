@@ -172,6 +172,7 @@ function RootLayoutNav() {
               <Stack.Screen name="ambassador/apply" options={{ headerShown: false }} />
               <Stack.Screen name="events/index" options={{ headerShown: false }} />
               <Stack.Screen name="events/create" options={{ headerShown: false }} />
+              <Stack.Screen name="profile/[userId]" options={{ headerShown: false, animation: "slide_from_right" }} />
             </>
           ) : (
             <>

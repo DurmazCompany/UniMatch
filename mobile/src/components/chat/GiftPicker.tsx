@@ -109,9 +109,22 @@ export function GiftPicker({ visible, onClose, receiverId, matchId, onSent }: Pr
               style={{ marginLeft: "auto" }}
               testID="gift-picker-topup"
             >
-              <Text style={{ color: Colors.primary, fontSize: 13, fontFamily: "DMSans_600SemiBold" }}>
-                + Coin Yükle
-              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  backgroundColor: Colors.primary,
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  borderRadius: 100,
+                }}
+              >
+                <Ionicons name="add" size={14} color={Colors.white} />
+                <Text style={{ color: Colors.white, fontSize: 13, fontFamily: "DMSans_600SemiBold" }}>
+                  Yükle
+                </Text>
+              </View>
             </Pressable>
           </View>
 

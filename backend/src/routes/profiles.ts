@@ -203,6 +203,36 @@ profilesRouter.post("/boost", async (c) => {
   return c.json({ data: { boostUntil: newBoostUntil } });
 });
 
+// GET /api/profile/:id - get public profile by Profile.id
+profilesRouter.get("/:id", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
+  const id = c.req.param("id");
+  const profile = await prisma.profile.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      userId: true,
+      name: true,
+      university: true,
+      department: true,
+      year: true,
+      bio: true,
+      photos: true,
+      hobbies: true,
+      lifestyle: true,
+      birthDate: true,
+      gender: true,
+      profilePower: true,
+      streakCount: true,
+      role: true,
+      isOnCampusToday: true,
+    },
+  });
+  if (!profile) return c.json({ error: { message: "Not found" } }, 404);
+  return c.json({ data: profile });
+});
+
 // POST /api/profile/push-token - save push notification token
 profilesRouter.post("/push-token", async (c) => {
   const user = c.get("user");

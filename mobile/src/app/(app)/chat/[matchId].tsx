@@ -12,7 +12,10 @@ import {
   Modal,
   Dimensions,
   StatusBar,
+  Alert,
+  ScrollView,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, router } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
@@ -37,6 +40,9 @@ import { UMAvatar } from "@/components/ui";
 import { useVoiceRecording } from "@/lib/hooks/useVoiceRecording";
 import { VoiceMessagePlayer } from "@/components/VoiceMessagePlayer";
 import { useScreenProtectionOnFocus } from "@/lib/hooks/useScreenProtection";
+import { ChatBackground, BG_OPTIONS, ChatBgId } from "@/components/chat/ChatBackgrounds";
+import { usePrivacyStore } from "@/lib/state/privacyStore";
+import { UMButton } from "@/components/ui";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -167,6 +173,38 @@ export default function ChatScreen() {
 
   const { isRecording, duration, startRecording, stopRecording, cancelRecording } = useVoiceRecording();
   const [isSendingVoice, setIsSendingVoice] = useState(false);
+
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showBgPicker, setShowBgPicker] = useState(false);
+  const [reportReason, setReportReason] = useState<string | null>(null);
+  const [reportDetails, setReportDetails] = useState("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [bgId, setBgId] = useState<ChatBgId>("default");
+  const blockUserAction = usePrivacyStore((s) => s.blockUser);
+
+  useEffect(() => {
+    if (!matchId) return;
+    AsyncStorage.getItem(`chat_bg_${matchId}`)
+      .then((v) => {
+        if (v && ["default", "stars", "hearts", "waves", "campus"].includes(v)) {
+          setBgId(v as ChatBgId);
+        }
+      })
+      .catch(() => {});
+  }, [matchId]);
+
+  const handleSelectBg = useCallback(
+    async (next: ChatBgId) => {
+      setBgId(next);
+      try {
+        await AsyncStorage.setItem(`chat_bg_${matchId}`, next);
+      } catch {}
+      setShowBgPicker(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [matchId]
+  );
 
   useEffect(() => {
     return () => {
@@ -479,6 +517,54 @@ export default function ChatScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [cancelRecording]);
 
+  const handleBlockUser = useCallback(() => {
+    if (!partner) return;
+    setShowMoreMenu(false);
+    Alert.alert(
+      "Engelle",
+      `${partner.name} adlı kullanıcıyı engellemek istediğine emin misin?`,
+      [
+        { text: "Vazgeç", style: "cancel" },
+        {
+          text: "Engelle",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await blockUserAction(partner.userId);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              router.back();
+            } catch {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert("Hata", "Engelleme başarısız oldu.");
+            }
+          },
+        },
+      ]
+    );
+  }, [partner, blockUserAction]);
+
+  const handleSubmitReport = useCallback(async () => {
+    if (!partner || !reportReason) return;
+    setIsSubmittingReport(true);
+    try {
+      await api.post(`/api/reports`, {
+        reportedId: partner.id,
+        reason: reportReason,
+        details: reportDetails.trim() || undefined,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowReportModal(false);
+      setReportReason(null);
+      setReportDetails("");
+      Alert.alert("Teşekkürler", "Şikayetin alındı. En kısa sürede inceleyeceğiz.");
+    } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Hata", "Şikayet gönderilemedi. Lütfen tekrar dene.");
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  }, [partner, reportReason, reportDetails]);
+
   const handleEphemeralTap = useCallback(
     (msg: Message) => {
       if (viewedEphemeralIds.has(msg.id)) return;
@@ -698,6 +784,7 @@ export default function ChatScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.bgDark }} testID="chat-screen">
+      <ChatBackground id={bgId} />
       <StatusBar barStyle="light-content" />
 
       {ephemeralViewerUri ? (
@@ -733,24 +820,44 @@ export default function ChatScreen() {
         >
           <Ionicons name="arrow-back-outline" size={20} color={Colors.textOnDark} />
         </Pressable>
-        {partner ? (
-          <View style={{ marginRight: 12 }}>
-            <UMAvatar uri={partnerPhotos[0]} size="md" fallback={partner.name} />
-          </View>
-        ) : null}
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: Colors.textOnDark, fontSize: 17, fontFamily: "DMSans_700Bold" }}>
-            {partner?.name ?? "..."}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
-            <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#4CD964" }} />
-            <Text style={{ color: isTyping ? "#4CD964" : Colors.textOnDarkMuted, fontSize: 12, fontFamily: "DMSans_500Medium" }}>
-              {isTyping ? "Yazıyor..." : "Online"}
+        <Pressable
+          testID="header-profile-tap"
+          onPress={() => {
+            if (partner) {
+              Haptics.selectionAsync();
+              router.push(`/profile/${partner.id}`);
+            }
+          }}
+          style={({ pressed }) => ({
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          {partner ? (
+            <View style={{ marginRight: 12 }}>
+              <UMAvatar uri={partnerPhotos[0]} size="md" fallback={partner.name} />
+            </View>
+          ) : null}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: Colors.textOnDark, fontSize: 17, fontFamily: "DMSans_700Bold" }}>
+              {partner?.name ?? "..."}
             </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+              <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#4CD964" }} />
+              <Text style={{ color: isTyping ? "#4CD964" : Colors.textOnDarkMuted, fontSize: 12, fontFamily: "DMSans_500Medium" }}>
+                {isTyping ? "Yazıyor..." : "Online"}
+              </Text>
+            </View>
           </View>
-        </View>
+        </Pressable>
         <Pressable
           testID="more-button"
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowMoreMenu(true);
+          }}
           style={({ pressed }) => ({
             width: 40,
             height: 40,
@@ -1081,6 +1188,242 @@ export default function ChatScreen() {
           university={myProfile?.university}
         />
       ) : null}
+
+      {/* 3-dot menu */}
+      <Modal visible={showMoreMenu} transparent animationType="fade" onRequestClose={() => setShowMoreMenu(false)}>
+        <Pressable
+          testID="more-menu-backdrop"
+          onPress={() => setShowMoreMenu(false)}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: Colors.surfaceDark,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              padding: 20,
+              paddingBottom: insets.bottom + 20,
+            }}
+          >
+            <View style={{ alignSelf: "center", width: 40, height: 4, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 2, marginBottom: 16 }} />
+            <Text style={{ color: Colors.textOnDark, fontSize: 18, fontFamily: "DMSans_700Bold", marginBottom: 16 }}>
+              Sohbet Ayarları
+            </Text>
+
+            <Pressable
+              testID="menu-bg"
+              onPress={() => {
+                setShowMoreMenu(false);
+                setShowBgPicker(true);
+              }}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+                paddingVertical: 14,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(124,111,247,0.2)", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="image-outline" size={18} color={Colors.primaryLight} />
+              </View>
+              <Text style={{ color: Colors.textOnDark, fontSize: 15, fontFamily: "DMSans_500Medium" }}>
+                Sohbet Arkaplanı
+              </Text>
+            </Pressable>
+
+            <Pressable
+              testID="menu-report"
+              onPress={() => {
+                setShowMoreMenu(false);
+                setShowReportModal(true);
+              }}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+                paddingVertical: 14,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,204,0,0.2)", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="flag-outline" size={18} color="#FFCC00" />
+              </View>
+              <Text style={{ color: Colors.textOnDark, fontSize: 15, fontFamily: "DMSans_500Medium" }}>
+                Şikayet Et
+              </Text>
+            </Pressable>
+
+            <Pressable
+              testID="menu-block"
+              onPress={handleBlockUser}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+                paddingVertical: 14,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(232,99,90,0.2)", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="ban-outline" size={18} color={Colors.coral} />
+              </View>
+              <Text style={{ color: Colors.coral, fontSize: 15, fontFamily: "DMSans_600SemiBold" }}>
+                Engelle
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Background picker */}
+      <Modal visible={showBgPicker} transparent animationType="slide" onRequestClose={() => setShowBgPicker(false)}>
+        <Pressable
+          testID="bg-picker-backdrop"
+          onPress={() => setShowBgPicker(false)}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: Colors.surfaceDark,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              padding: 20,
+              paddingBottom: insets.bottom + 20,
+            }}
+          >
+            <View style={{ alignSelf: "center", width: 40, height: 4, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 2, marginBottom: 16 }} />
+            <Text style={{ color: Colors.textOnDark, fontSize: 18, fontFamily: "DMSans_700Bold", marginBottom: 16 }}>
+              Arkaplan Seç
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingVertical: 4 }}>
+              {BG_OPTIONS.map((opt) => {
+                const selected = opt.id === bgId;
+                return (
+                  <Pressable
+                    key={opt.id}
+                    testID={`bg-option-${opt.id}`}
+                    onPress={() => handleSelectBg(opt.id)}
+                    style={{ alignItems: "center", gap: 8 }}
+                  >
+                    <View
+                      style={{
+                        width: 100,
+                        height: 140,
+                        borderRadius: Radius.card,
+                        overflow: "hidden",
+                        borderWidth: selected ? 3 : 1,
+                        borderColor: selected ? Colors.primary : "rgba(255,255,255,0.1)",
+                        backgroundColor: Colors.bgDark,
+                      }}
+                    >
+                      <ChatBackground id={opt.id} />
+                    </View>
+                    <Text
+                      style={{
+                        color: selected ? Colors.primaryLight : Colors.textOnDark,
+                        fontSize: 13,
+                        fontFamily: selected ? "DMSans_700Bold" : "DMSans_500Medium",
+                      }}
+                    >
+                      {opt.emoji} {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Report modal */}
+      <Modal visible={showReportModal} transparent animationType="slide" onRequestClose={() => setShowReportModal(false)}>
+        <Pressable
+          testID="report-backdrop"
+          onPress={() => setShowReportModal(false)}
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: Colors.surfaceDark,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              padding: 20,
+              paddingBottom: insets.bottom + 20,
+              maxHeight: SCREEN_HEIGHT * 0.85,
+            }}
+          >
+            <View style={{ alignSelf: "center", width: 40, height: 4, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 2, marginBottom: 16 }} />
+            <Text style={{ color: Colors.textOnDark, fontSize: 20, fontFamily: "DMSans_700Bold", marginBottom: 6 }}>
+              Şikayet Et
+            </Text>
+            <Text style={{ color: Colors.textOnDarkMuted, fontSize: 13, fontFamily: "DMSans_400Regular", marginBottom: 16 }}>
+              Bu kullanıcıyı neden şikayet ediyorsun?
+            </Text>
+
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+              {["Spam", "Uygunsuz İçerik", "Sahte Profil", "Taciz", "Diğer"].map((r) => {
+                const sel = reportReason === r;
+                return (
+                  <Pressable
+                    key={r}
+                    testID={`report-reason-${r}`}
+                    onPress={() => setReportReason(r)}
+                    style={({ pressed }) => ({
+                      paddingHorizontal: 14,
+                      paddingVertical: 9,
+                      borderRadius: 100,
+                      backgroundColor: sel ? Colors.primary : Colors.cardDark,
+                      borderWidth: 1,
+                      borderColor: sel ? Colors.primary : "rgba(255,255,255,0.08)",
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <Text style={{ color: sel ? Colors.white : Colors.textOnDark, fontSize: 13, fontFamily: "DMSans_600SemiBold" }}>
+                      {r}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text style={{ color: Colors.textOnDarkMuted, fontSize: 12, fontFamily: "DMSans_500Medium", marginBottom: 6 }}>
+              Detaylar (opsiyonel)
+            </Text>
+            <TextInput
+              testID="report-details"
+              value={reportDetails}
+              onChangeText={setReportDetails}
+              placeholder="Daha fazla bilgi ver..."
+              placeholderTextColor={Colors.textOnDarkMuted}
+              multiline
+              maxLength={500}
+              style={{
+                backgroundColor: Colors.cardDark,
+                borderRadius: 16,
+                padding: 14,
+                color: Colors.textOnDark,
+                fontSize: 14,
+                fontFamily: "DMSans_400Regular",
+                minHeight: 80,
+                textAlignVertical: "top",
+                marginBottom: 16,
+              }}
+            />
+
+            <UMButton
+              variant="primary"
+              label={isSubmittingReport ? "Gönderiliyor..." : "Gönder"}
+              onPress={handleSubmitReport}
+              disabled={!reportReason || isSubmittingReport}
+              loading={isSubmittingReport}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
