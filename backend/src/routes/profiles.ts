@@ -4,7 +4,6 @@ import { prisma } from "../prisma";
 import { auth } from "../auth";
 import { randomUUID } from "crypto";
 import { calculateProfilePower } from "../lib/profile-power";
-import { findOrCreateUniversity } from "../lib/university";
 import { sendPushNotification } from "../lib/push";
 
 const profileSchema = z.object({
@@ -17,7 +16,6 @@ const profileSchema = z.object({
   photos: z.array(z.string()).min(2).max(6),
   hobbies: z.array(z.string()).min(1).max(5),
   university: z.string().min(2).max(100),
-  selfieVerified: z.boolean().optional()
 });
 
 export const profilesRouter = new Hono<{
@@ -38,7 +36,6 @@ profilesRouter.get("/", async (c) => {
       include: {
         matchesAsUser1: { select: { isActive: true } },
         matchesAsUser2: { select: { isActive: true } },
-        universityRef: true,
       },
     });
 
@@ -71,9 +68,10 @@ profilesRouter.get("/", async (c) => {
       }
     }
 
-    // Return profile data (exclude relation arrays, include universityRef)
+    // Return profile data (exclude relation arrays); compute isPremium for API contract
     const { matchesAsUser1: _u1, matchesAsUser2: _u2, ...profileData } = profileWithMatches;
-    return c.json({ data: profileData });
+    const isPremium = profileData.subscriptionTier !== "crush";
+    return c.json({ data: { ...profileData, isPremium } });
   } catch (error) {
     console.error("Error fetching profile:", error);
     return c.json({ error: { message: "Internal server error" } }, 500);
@@ -103,7 +101,7 @@ profilesRouter.post("/", async (c) => {
 
   const {
     name, birthDate, gender, department, year, bio,
-    photos, hobbies, university, selfieVerified
+    photos, hobbies, university,
   } = result.data;
 
   // Convert arrays to JSON strings for Prisma storage
@@ -117,8 +115,6 @@ profilesRouter.post("/", async (c) => {
     photos: photosJson,
     bio: bio ?? null,
     hobbies: hobbiesJson,
-    selfieVerified: selfieVerified ?? false,
-    isPremium: existing?.isPremium ?? false,
     streakCount: existing?.streakCount ?? 0,
   });
 
@@ -135,13 +131,13 @@ profilesRouter.post("/", async (c) => {
         photos: photosJson ?? existing.photos,
         hobbies: hobbiesJson ?? existing.hobbies,
         university: university ?? existing.university,
-        selfieVerified: selfieVerified !== undefined ? selfieVerified : existing.selfieVerified,
         profilePower: power,
       },
     });
     return c.json({ data: updated });
   }
 
+  const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
   const created = await prisma.profile.create({
     data: {
       id: randomUUID(),
@@ -155,27 +151,10 @@ profilesRouter.post("/", async (c) => {
       bio,
       photos: photosJson,
       hobbies: hobbiesJson,
-      selfieVerified: selfieVerified || false,
       profilePower: power,
+      referralCode,
     },
   });
-
-  // Auto-detect university from email
-  try {
-    const universityRecord = await findOrCreateUniversity(user.email);
-    const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    await prisma.profile.update({
-      where: { id: created.id },
-      data: {
-        universityId: universityRecord.id,
-        university: universityRecord.displayName,
-        referralCode,
-      },
-    });
-  } catch (e) {
-    // non-fatal: university detection failure shouldn't block profile creation
-    console.error("University detection failed:", e);
-  }
 
   return c.json({ data: created });
 });

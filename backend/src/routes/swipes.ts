@@ -210,14 +210,11 @@ swipesRouter.post("/", async (c) => {
             )
           : 50;
 
-        const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
-
         match = await prisma.match.create({
           data: {
             id: randomUUID(),
             user1Id: myProfile.id,
             user2Id: targetProfileId,
-            expiresAt,
             iceBreakerQuestion: iceBreaker,
             compatibilityScore,
           },
@@ -391,7 +388,6 @@ swipesRouter.delete("/", async (c) => {
     where: { id: myProfile.id },
     data: {
       swipesToday: newSwipesToday,
-      lastRewindDate: new Date(),
     },
   });
 

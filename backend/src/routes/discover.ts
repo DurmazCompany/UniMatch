@@ -43,13 +43,13 @@ discoverRouter.get("/", async (c) => {
     : [];
   const blockedProfileIds = blockedProfiles.map(p => p.id);
 
-  // Build candidate filter — apply university filter if the user has a universityId
+  // Build candidate filter — apply university filter by string match
   const excludeIds = [myProfile.id, ...swipedIds, ...blockedProfileIds];
 
   let candidates = await prisma.profile.findMany({
     where: {
       id: { notIn: excludeIds },
-      ...(myProfile.universityId ? { universityId: myProfile.universityId } : {}),
+      ...(myProfile.university ? { university: myProfile.university } : {}),
     },
     take: 50,
     orderBy: { profilePower: "desc" },
@@ -130,23 +130,28 @@ discoverRouter.get("/", async (c) => {
   );
 
   const now = new Date();
+  const isActive = (p: { subscriptionTier: string; subscriptionExpiresAt: Date | null }) =>
+    p.subscriptionTier !== "crush" && (!p.subscriptionExpiresAt || p.subscriptionExpiresAt > now);
 
   // Sort: premium tier + boost + profilePower + compatibility + random jitter for variety
   scored.sort((a, b) => {
     let priorityA = 0;
     let priorityB = 0;
 
+    const aPremium = isActive(a);
+    const bPremium = isActive(b);
+
     // Premium tier priority scoring
-    if (a.isPremium && a.premiumUntil && a.premiumUntil > now && a.premiumTier === "flort") priorityA += 0.5;
-    if (a.premiumTier === "ask") priorityA += 1.0;
+    if (aPremium && a.subscriptionTier === "flort") priorityA += 0.5;
+    if (aPremium && a.subscriptionTier === "ask") priorityA += 1.0;
     if (a.boostUntil && a.boostUntil > now) priorityA += 2.0;
 
-    if (b.isPremium && b.premiumUntil && b.premiumUntil > now && b.premiumTier === "flort") priorityB += 0.5;
-    if (b.premiumTier === "ask") priorityB += 1.0;
+    if (bPremium && b.subscriptionTier === "flort") priorityB += 0.5;
+    if (bPremium && b.subscriptionTier === "ask") priorityB += 1.0;
     if (b.boostUntil && b.boostUntil > now) priorityB += 2.0;
 
-    const scoreA = priorityA + (a.isPremium ? 0.3 : 0) + a.profilePower * 0.007 + a.compatibilityScore * 0.005 + Math.random() * 0.1;
-    const scoreB = priorityB + (b.isPremium ? 0.3 : 0) + b.profilePower * 0.007 + b.compatibilityScore * 0.005 + Math.random() * 0.1;
+    const scoreA = priorityA + (aPremium ? 0.3 : 0) + a.profilePower * 0.007 + a.compatibilityScore * 0.005 + Math.random() * 0.1;
+    const scoreB = priorityB + (bPremium ? 0.3 : 0) + b.profilePower * 0.007 + b.compatibilityScore * 0.005 + Math.random() * 0.1;
     return scoreB - scoreA;
   });
 

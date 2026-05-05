@@ -33,26 +33,18 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
 
 export const PERIOD_DAYS = 30;
 
-type PremiumLike = Pick<
-  Profile,
-  "subscriptionTier" | "subscriptionExpiresAt" | "isPremium" | "premiumUntil" | "premiumTier"
->;
+type PremiumLike = Pick<Profile, "subscriptionTier" | "subscriptionExpiresAt">;
 
 export function isPremiumActive(profile: PremiumLike, now: Date = new Date()): boolean {
   const tier = (profile.subscriptionTier ?? "crush") as SubscriptionTier;
-  if (tier !== "crush") {
-    if (!profile.subscriptionExpiresAt) return true;
-    if (profile.subscriptionExpiresAt > now) return true;
-  }
-  if (profile.isPremium && profile.premiumUntil && profile.premiumUntil > now) {
-    return true;
-  }
-  return false;
+  if (tier === "crush") return false;
+  if (!profile.subscriptionExpiresAt) return true;
+  return profile.subscriptionExpiresAt > now;
 }
 
 export function getActiveTier(profile: PremiumLike, now: Date = new Date()): SubscriptionTier {
   if (!isPremiumActive(profile, now)) return "crush";
-  const tier = (profile.subscriptionTier ?? profile.premiumTier ?? "crush") as SubscriptionTier;
+  const tier = (profile.subscriptionTier ?? "crush") as SubscriptionTier;
   return tier === "flort" || tier === "ask" ? tier : "crush";
 }
 

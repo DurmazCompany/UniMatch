@@ -29,12 +29,6 @@ matchesRouter.get("/", async (c) => {
   const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
   if (!profile) return c.json({ data: [] });
 
-  // Expire old matches
-  await prisma.match.updateMany({
-    where: { expiresAt: { lt: new Date() }, isActive: true },
-    data: { isActive: false },
-  });
-
   const matches = await prisma.match.findMany({
     where: {
       isActive: true,
@@ -76,8 +70,8 @@ matchesRouter.post("/:id/accept-icebreaker", async (c) => {
   }
 
   // Verify match is still active
-  if (!existingMatch.isActive || (existingMatch.expiresAt && new Date(existingMatch.expiresAt) < new Date())) {
-    return c.json({ error: { message: "Match has expired", code: "EXPIRED" } }, 410);
+  if (!existingMatch.isActive) {
+    return c.json({ error: { message: "Match is no longer active", code: "INACTIVE" } }, 410);
   }
 
   const match = await prisma.match.update({
@@ -125,8 +119,8 @@ matchesRouter.get("/:id/messages", async (c) => {
   }
 
   // Verify match is still active
-  if (!match.isActive || (match.expiresAt && new Date(match.expiresAt) < new Date())) {
-    return c.json({ error: { message: "Match has expired", code: "EXPIRED" } }, 410);
+  if (!match.isActive) {
+    return c.json({ error: { message: "Match is no longer active", code: "INACTIVE" } }, 410);
   }
 
   // Block kontrolü: karşı taraf engellenmişse mesajları gösterme
@@ -177,8 +171,8 @@ matchesRouter.post("/:id/messages", async (c) => {
   }
 
   // Verify match is still active
-  if (!match.isActive || (match.expiresAt && new Date(match.expiresAt) < new Date())) {
-    return c.json({ error: { message: "Match has expired", code: "EXPIRED" } }, 410);
+  if (!match.isActive) {
+    return c.json({ error: { message: "Match is no longer active", code: "INACTIVE" } }, 410);
   }
 
   // Block kontrolü: engellenmiş kullanıcıya mesaj gönderilemez
@@ -250,55 +244,6 @@ matchesRouter.post("/:id/messages", async (c) => {
   }
 
   return c.json({ data: message });
-});
-
-// POST /api/matches/:id/extend — premium: extend match expiry by 5 days
-matchesRouter.post("/:id/extend", async (c) => {
-  const user = c.get("user");
-  if (!user) return c.json({ error: { message: "Unauthorized" } }, 401);
-
-  const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
-  if (!myProfile) return c.json({ error: { message: "Profile not found" } }, 404);
-
-  const isPremiumActive = myProfile.isPremium && myProfile.premiumUntil && myProfile.premiumUntil > new Date();
-  if (!isPremiumActive) {
-    return c.json({ error: { message: "Bu özellik premium üyeler içindir.", code: "PREMIUM_REQUIRED" } }, 403);
-  }
-
-  // Flört: max 1 extension per week
-  if (myProfile.premiumTier === "flort") {
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const lastExtWeek = myProfile.lastExtensionWeek;
-    if (myProfile.matchExtensionsThisWeek >= 1 && lastExtWeek && lastExtWeek > weekAgo) {
-      return c.json({ error: { message: "Haftada 1 eşleşme uzatma hakkın var.", code: "EXTENSION_LIMIT" } }, 429);
-    }
-  }
-
-  const matchId = c.req.param("id");
-  const match = await prisma.match.findFirst({
-    where: {
-      id: matchId,
-      OR: [{ user1Id: myProfile.id }, { user2Id: myProfile.id }],
-    },
-  });
-  if (!match) return c.json({ error: { message: "Match not found" } }, 404);
-
-  const newExpiry = new Date(Math.max(match.expiresAt?.getTime() ?? Date.now(), Date.now()) + 5 * 24 * 60 * 60 * 1000);
-
-  await prisma.match.update({ where: { id: matchId }, data: { expiresAt: newExpiry } });
-
-  // Update extension count (reset weekly)
-  const weekAgo2 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const needsReset = !myProfile.lastExtensionWeek || myProfile.lastExtensionWeek < weekAgo2;
-  await prisma.profile.update({
-    where: { id: myProfile.id },
-    data: {
-      matchExtensionsThisWeek: needsReset ? 1 : myProfile.matchExtensionsThisWeek + 1,
-      lastExtensionWeek: new Date(),
-    },
-  });
-
-  return c.json({ data: { expiresAt: newExpiry } });
 });
 
 // PATCH /api/matches/:id/read — mark all incoming messages as read
@@ -378,7 +323,6 @@ matchesRouter.post("/seed-test", async (c) => {
         user1Id: myProfile.id,
         user2Id: partner.id,
         matchedAt: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
-        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
         iceBreakerQuestion: iceBreakerQuestions[i] ?? "Merhaba!",
         iceBreakerAccepted: i < 2, // First 2 have accepted icebreaker
         compatibilityScore: 70 + Math.floor(Math.random() * 25),

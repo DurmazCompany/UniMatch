@@ -36,12 +36,17 @@ referralsRouter.get("/stats", async (c) => {
     where: { inviterId: myProfile.id, rewardGiven: true },
   });
 
+  const now = new Date();
+  const isPremium =
+    myProfile.subscriptionTier !== "crush" &&
+    (!myProfile.subscriptionExpiresAt || myProfile.subscriptionExpiresAt > now);
+
   return c.json({
     data: {
       referralCode: myProfile.referralCode,
       referralCount: count,
-      isPremium: myProfile.isPremium,
-      premiumUntil: myProfile.premiumUntil,
+      isPremium,
+      premiumUntil: myProfile.subscriptionExpiresAt,
     },
   });
 });
@@ -129,17 +134,21 @@ referralsRouter.post(
     const now = new Date();
 
     // Inviter gets +7 days premium (stacks on top of existing)
-    const inviterPremiumBase =
-      inviterProfile.isPremium && inviterProfile.premiumUntil && inviterProfile.premiumUntil > now
-        ? inviterProfile.premiumUntil
-        : now;
+    const inviterActive =
+      inviterProfile.subscriptionTier !== "crush" &&
+      inviterProfile.subscriptionExpiresAt &&
+      inviterProfile.subscriptionExpiresAt > now;
+    const inviterPremiumBase = inviterActive
+      ? inviterProfile.subscriptionExpiresAt!
+      : now;
     const inviterNewPremiumUntil = new Date(inviterPremiumBase.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     // New user gets +3 days premium
-    const myPremiumBase =
-      myProfile.isPremium && myProfile.premiumUntil && myProfile.premiumUntil > now
-        ? myProfile.premiumUntil
-        : now;
+    const myActive =
+      myProfile.subscriptionTier !== "crush" &&
+      myProfile.subscriptionExpiresAt &&
+      myProfile.subscriptionExpiresAt > now;
+    const myPremiumBase = myActive ? myProfile.subscriptionExpiresAt! : now;
     const myNewPremiumUntil = new Date(myPremiumBase.getTime() + 3 * 24 * 60 * 60 * 1000);
 
     await prisma.$transaction([
@@ -148,11 +157,17 @@ referralsRouter.post(
       }),
       prisma.profile.update({
         where: { id: inviterProfile.id },
-        data: { isPremium: true, premiumUntil: inviterNewPremiumUntil },
+        data: {
+          subscriptionTier: inviterProfile.subscriptionTier === "crush" ? "flort" : inviterProfile.subscriptionTier,
+          subscriptionExpiresAt: inviterNewPremiumUntil,
+        },
       }),
       prisma.profile.update({
         where: { id: myProfile.id },
-        data: { isPremium: true, premiumUntil: myNewPremiumUntil },
+        data: {
+          subscriptionTier: myProfile.subscriptionTier === "crush" ? "flort" : myProfile.subscriptionTier,
+          subscriptionExpiresAt: myNewPremiumUntil,
+        },
       }),
     ]);
 

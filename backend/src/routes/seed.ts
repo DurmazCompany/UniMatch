@@ -177,7 +177,6 @@ seedRouter.post("/profiles", async (c) => {
       photos: photosJson,
       bio,
       hobbies: hobbiesJson,
-      selfieVerified: Math.random() > 0.5,
     });
 
     // Create a fake user first
@@ -216,9 +215,8 @@ seedRouter.post("/profiles", async (c) => {
           photos: photosJson,
           hobbies: hobbiesJson,
           lifestyle: getRandomLifestyle(),
-          selfieVerified: Math.random() > 0.5,
           profilePower: power,
-          isPremium: Math.random() > 0.8, // 20% premium
+          subscriptionTier: Math.random() > 0.8 ? "flort" : "crush",
           isOnCampusToday: Math.random() > 0.5,
           onCampusTodayDate: Math.random() > 0.5 ? new Date() : null,
         },

@@ -322,7 +322,7 @@ export default function ChatScreen() {
   });
 
   const myProfile = match ? (match.user1.userId === myUserId ? match.user1 : match.user2) : null;
-  const isPremiumAsk = myProfile?.premiumTier === "ask";
+  const isPremiumAsk = myProfile?.subscriptionTier === "ask";
   const partner = match ? getPartnerProfile(match, myUserId) : null;
   const partnerPhotos = partner ? parsePhotos(partner.photos) : [];
 

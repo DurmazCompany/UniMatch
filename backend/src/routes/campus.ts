@@ -62,11 +62,12 @@ campusRouter.get("/who-liked-me", async (c) => {
     take: 20,
   });
 
-  if (tier !== "crush") {
+  const isPremium = tier !== "crush";
+  if (isPremium) {
     // Premium user: return full swiper profiles
     return c.json({
       data: {
-        isPremium: true,
+        isPremium,
         likers: swipers.map(s => ({
           id: s.swiper.id,
           name: s.swiper.name,

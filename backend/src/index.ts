@@ -5,7 +5,6 @@ import { logger } from "hono/logger";
 import "./env";
 import { auth } from "./auth";
 import { sampleRouter } from "./routes/sample";
-import { universitiesRouter } from "./routes/universities";
 import { profilesRouter } from "./routes/profiles";
 import { discoverRouter } from "./routes/discover";
 import { swipesRouter } from "./routes/swipes";
@@ -74,7 +73,6 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 // App routes
 app.route("/api/sample", sampleRouter);
-app.route("/api/universities", universitiesRouter);
 app.route("/api/profile", profilesRouter);
 app.route("/api/discover", discoverRouter);
 app.route("/api/swipe", swipesRouter);

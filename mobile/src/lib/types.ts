@@ -1,15 +1,6 @@
-export interface University {
-  id: string;
-  displayName: string;
-  slug: string;
-  emailDomain: string;
-}
-
 export interface Profile {
   id: string;
   userId: string;
-  universityId?: string;
-  universityRef?: University | null;
   university: string;
   name: string;
   birthDate: string;
@@ -21,7 +12,6 @@ export interface Profile {
   hobbies?: string; // JSON string array
   lifestyle?: string; // JSON object
   courses?: string; // JSON string array
-  selfieVerified: boolean;
   profilePower: number;
   streakCount: number;
   swipesToday: number;
@@ -29,12 +19,12 @@ export interface Profile {
   referralCode?: string;
   isOnCampusToday: boolean;
   compatibilityScore?: number;
+  // Computed by backend from subscriptionTier
   isPremium?: boolean;
-  premiumUntil?: string;
+  // Underlying subscription state
+  subscriptionTier?: "crush" | "flort" | "ask";
+  subscriptionExpiresAt?: string | null;
   boostUntil?: string | null;
-  premiumTier?: "flort" | "ask" | null;
-  rewindsToday?: number;
-  matchExtensionsThisWeek?: number;
 }
 
 // Who liked me response types
@@ -58,7 +48,6 @@ export interface Match {
   user1Id: string;
   user2Id: string;
   matchedAt: string;
-  expiresAt: string;
   iceBreakerQuestion: string;
   iceBreakerAccepted: boolean;
   compatibilityScore: number;

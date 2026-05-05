@@ -27,9 +27,9 @@ export const TIER_LIMITS = {
 } as const;
 
 export const COIN_PACKAGES: Record<string, number> = {
-  coins_400: 560,
-  coins_750: 750,
-  coins_1700: 2550,
+  coins_400: 550,
+  coins_750: 900,
+  coins_1700: 2800,
 };
 
 export const BOOST_COIN_COST: Record<number, number> = { 1: 750, 3: 2000, 10: 6000 };
@@ -509,10 +509,6 @@ export async function applySubscriptionFromWebhook(
       data: {
         subscriptionTier: tier,
         subscriptionExpiresAt: expires,
-        // Keep legacy fields in sync
-        isPremium: true,
-        premiumUntil: expires,
-        premiumTier: tier,
       },
     });
     if (tier !== previousTier && (tier === "flort" || tier === "ask")) {
@@ -541,9 +537,6 @@ export async function applyCancellationFromWebhook(
       subscriptionTier: "crush",
       subscriptionExpiresAt: null,
       isInvisible: false,
-      isPremium: false,
-      premiumUntil: null,
-      premiumTier: null,
     },
   });
 }

@@ -2,8 +2,6 @@ export function calculateProfilePower(profile: {
   photos: string | null;
   bio: string | null;
   hobbies: string | null;
-  selfieVerified: boolean;
-  isPremium?: boolean;
   streakCount?: number;
 }): number {
   let power = 0;
@@ -26,12 +24,8 @@ export function calculateProfilePower(profile: {
   if (hobbies.length > 0) power += 15;
   if (hobbies.length >= 3) power += 5;
 
-  // Verification & activity
-  if (profile.selfieVerified) power += 10;
+  // Activity
   if ((profile.streakCount ?? 0) >= 7) power += 5;
-
-  // Premium bonus
-  if (profile.isPremium) power += 15;
 
   return Math.min(power, 100);
 }

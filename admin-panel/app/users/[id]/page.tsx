@@ -13,7 +13,7 @@ export default async function UserDetail({
 }) {
   const profile = await prisma.profile.findUnique({
     where: { id: params.id },
-    include: { user: true, universityRef: true },
+    include: { user: true },
   });
   if (!profile) notFound();
 

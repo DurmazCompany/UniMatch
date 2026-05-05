@@ -356,7 +356,7 @@ function CoinPackageCard({
 
       <View style={{ flex: 1 }}>
         <Text style={{ color: Colors.textDark, fontSize: 24, fontFamily: "DMSans_700Bold" }}>
-          {pkg.coins.toLocaleString("tr-TR")} coin
+          {pkg.label ?? `${pkg.coins.toLocaleString("tr-TR")} coin`}
         </Text>
         <Text
           style={{

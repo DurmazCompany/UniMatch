@@ -64,16 +64,6 @@ model Verification {
   updatedAt  DateTime @updatedAt
 }
 
-model University {
-  id          String    @id @default(cuid())
-  displayName String    // "Yeditepe Üniversitesi"
-  slug        String    @unique  // "yeditepe"
-  emailDomain String    @unique  // "yeditepe.edu.tr"
-  logoUrl     String?
-  createdAt   DateTime  @default(now())
-  profiles    Profile[]
-}
-
 model Profile {
   id                String    @id @default(cuid())
   userId            String    @unique
@@ -88,7 +78,6 @@ model Profile {
   photos            String    // JSON array of photo URLs
   hobbies           String?   // JSON array
   lifestyle         String?   // JSON object with schedule (morning/night) and spot (library/cafeteria/outdoor)
-  selfieVerified    Boolean   @default(false)
   profilePower      Int       @default(0) // 0-100
   streakCount       Int       @default(0)
   lastStreakDate    DateTime?
@@ -97,19 +86,10 @@ model Profile {
   superLikesLeft    Int       @default(1) // resets daily for free
   isOnCampusToday   Boolean   @default(false)
   onCampusTodayDate DateTime?
-  isPremium         Boolean   @default(false)
-  premiumUntil      DateTime?
   pushToken         String?   // Expo push notification token
-  universityId      String?
-  universityRef     University? @relation(fields: [universityId], references: [id])
   role              String    @default("user")   // "user" | "ambassador" | "admin"
   referralCode      String    @default("")       // auto-generated on first profile create
   boostUntil            DateTime?
-  rewindsToday          Int       @default(0)
-  lastRewindDate        DateTime?
-  premiumTier           String?   // "flort" | "ask" | null
-  matchExtensionsThisWeek Int     @default(0)
-  lastExtensionWeek     DateTime?
   // Monetization v2
   isBanned              Boolean   @default(false)
   banReason             String?
@@ -160,7 +140,6 @@ model Match {
   user1Id             String
   user2Id             String
   matchedAt           DateTime  @default(now())
-  expiresAt           DateTime? // DEPRECATED: matches are permanent now (kept nullable for backward compat)
   iceBreakerQuestion  String
   iceBreakerAccepted  Boolean   @default(false)
   compatibilityScore  Int       @default(0) // 0-100

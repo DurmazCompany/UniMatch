@@ -28,16 +28,16 @@ eventsRouter.get("/", async (c) => {
         select: { profileId: true },
       },
       createdBy: {
-        select: { universityId: true, university: true },
+        select: { university: true },
       },
     },
     orderBy: { date: "asc" },
   });
 
-  const filteredEvents = myProfile.universityId
+  const filteredEvents = myProfile.university
     ? allEvents.filter(
         (e) =>
-          e.createdBy.universityId === myProfile.universityId ||
+          e.createdBy.university === myProfile.university ||
           e.university === myProfile.university
       )
     : allEvents;

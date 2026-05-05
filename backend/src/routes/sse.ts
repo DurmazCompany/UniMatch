@@ -45,8 +45,8 @@ sseRouter.get("/matches/:matchId", async (c) => {
   }
 
   // Verify match is still active
-  if (!match.isActive || (match.expiresAt && new Date(match.expiresAt) < new Date())) {
-    return c.json({ error: { message: "Match has expired", code: "EXPIRED" } }, 410);
+  if (!match.isActive) {
+    return c.json({ error: { message: "Match is no longer active", code: "INACTIVE" } }, 410);
   }
 
   return streamSSE(c, async (stream) => {
