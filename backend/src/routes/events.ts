@@ -197,6 +197,27 @@ eventsRouter.post(
   }
 );
 
+// GET /invitations/by-match/:matchId — list invitations exchanged on a given match
+eventsRouter.get("/invitations/by-match/:matchId", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } }, 401);
+
+  const myProfile = await prisma.profile.findUnique({ where: { userId: user.id } });
+  if (!myProfile) return c.json({ error: { message: "Profile not found", code: "PROFILE_NOT_FOUND" } }, 404);
+
+  const matchId = c.req.param("matchId");
+  const invs = await prisma.eventInvitation.findMany({
+    where: {
+      matchId,
+      OR: [{ senderId: myProfile.id }, { receiverId: myProfile.id }],
+    },
+    include: { event: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return c.json({ data: invs });
+});
+
 // POST /:id/join — Join an event
 eventsRouter.post("/:id/join", async (c) => {
   const user = c.get("user");

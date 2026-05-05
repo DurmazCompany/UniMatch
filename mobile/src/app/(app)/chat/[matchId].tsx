@@ -24,9 +24,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/lib/api/api";
 import { authClient } from "@/lib/auth/auth-client";
 import { useSession } from "@/lib/auth/use-session";
-import { Match, Message, Profile, GiftSent } from "@/lib/types";
+import { Match, Message, Profile, GiftSent, EventInvitation } from "@/lib/types";
 import { GiftPicker } from "@/components/chat/GiftPicker";
 import { GiftBubble } from "@/components/chat/GiftBubble";
+import { EventInvitePicker } from "@/components/chat/EventInvitePicker";
+import { EventInviteBubble } from "@/components/chat/EventInviteBubble";
+import { useMatchInvitations } from "@/lib/hooks/useEvents";
 import { format, isToday, isYesterday } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Colors, Radius } from "@/lib/theme";
@@ -156,6 +159,7 @@ export default function ChatScreen() {
 
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showGiftPicker, setShowGiftPicker] = useState(false);
+  const [showEventInvitePicker, setShowEventInvitePicker] = useState(false);
 
   const [viewedEphemeralIds, setViewedEphemeralIds] = useState<Set<string>>(new Set());
   const [ephemeralViewerUri, setEphemeralViewerUri] = useState<string | null>(null);
@@ -297,9 +301,12 @@ export default function ChatScreen() {
     enabled: !!matchId,
   });
 
+  const { data: matchInvitations } = useMatchInvitations(matchId);
+
   type ChatItem =
     | { kind: "message"; data: Message; createdAt: string }
     | { kind: "gift"; data: GiftSent; createdAt: string }
+    | { kind: "invitation"; data: EventInvitation; createdAt: string }
     | { kind: "separator"; date: string };
 
   const messagesWithSeparators = useMemo<ChatItem[]>(() => {
@@ -313,8 +320,13 @@ export default function ChatScreen() {
       data: g,
       createdAt: g.createdAt,
     }));
+    const invs = (matchInvitations ?? []).map((i) => ({
+      kind: "invitation" as const,
+      data: i,
+      createdAt: i.createdAt,
+    }));
     type DatedItem = Extract<ChatItem, { createdAt: string }>;
-    const merged: DatedItem[] = ([...msgs, ...gifts] as DatedItem[]).sort(
+    const merged: DatedItem[] = ([...msgs, ...gifts, ...invs] as DatedItem[]).sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
     const result: ChatItem[] = [];
@@ -328,7 +340,7 @@ export default function ChatScreen() {
       result.push(item);
     }
     return result;
-  }, [messages, matchGifts]);
+  }, [messages, matchGifts, matchInvitations]);
 
   const { mutate: sendMessage, isPending: isSending } = useMutation({
     mutationFn: (payload: { content: string; messageType?: string }) =>
@@ -502,6 +514,16 @@ export default function ChatScreen() {
                 {item.date}
               </Text>
             </View>
+          </View>
+        );
+      }
+
+      if (item.kind === "invitation") {
+        const inv = item.data;
+        const isMine = inv.senderId === myProfile?.id;
+        return (
+          <View style={{ paddingHorizontal: 16 }}>
+            <EventInviteBubble invitation={inv} isMine={isMine} />
           </View>
         );
       }
@@ -757,6 +779,8 @@ export default function ChatScreen() {
               ? `sep-${index}`
               : item.kind === "gift"
               ? `gift-${item.data.id}`
+              : item.kind === "invitation"
+              ? `inv-${item.data.id}`
               : item.data.id
           }
           contentContainerStyle={{ paddingVertical: 16, paddingBottom: 8 }}
@@ -957,6 +981,24 @@ export default function ChatScreen() {
                   >
                     <Ionicons name="gift-outline" size={18} color={Colors.primaryLight} />
                   </Pressable>
+                  <Pressable
+                    testID="event-invite-button"
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowEventInvitePicker(true);
+                    }}
+                    style={({ pressed }) => ({
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      backgroundColor: "rgba(124,111,247,0.18)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <Ionicons name="calendar-outline" size={18} color={Colors.primaryLight} />
+                  </Pressable>
                 </>
               ) : null}
 
@@ -1026,6 +1068,16 @@ export default function ChatScreen() {
           onClose={() => setShowGiftPicker(false)}
           receiverId={partner.id}
           matchId={matchId}
+        />
+      ) : null}
+
+      {partner ? (
+        <EventInvitePicker
+          visible={showEventInvitePicker}
+          onClose={() => setShowEventInvitePicker(false)}
+          receiverId={partner.id}
+          matchId={matchId}
+          university={myProfile?.university}
         />
       ) : null}
     </View>

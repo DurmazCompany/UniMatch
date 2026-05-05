@@ -115,3 +115,47 @@ export interface CoinLedgerEntry {
   refId: string | null;
   createdAt: string;
 }
+
+export interface AmbassadorApplication {
+  id: string;
+  userId: string;
+  university: string;
+  faculty: string;
+  year: string;
+  motivation: string;
+  socialLinks: string | null;
+  status: "pending" | "approved" | "rejected";
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+}
+
+export interface EventModel {
+  id: string;
+  title: string;
+  description: string | null;
+  date: string;
+  location: string;
+  createdById: string;
+  university: string | null;
+  isActive: boolean;
+  isPaid: boolean;
+  ticketPrice: number | null;
+  capacity: number | null;
+  coverUrl: string | null;
+  maxAttendees: number | null;
+  ticketsSold: number;
+  createdAt: string;
+}
+
+export interface EventInvitation {
+  id: string;
+  eventId: string;
+  senderId: string;
+  receiverId: string;
+  matchId: string | null;
+  status: "pending" | "accepted" | "declined";
+  createdAt: string;
+  event?: EventModel;
+}

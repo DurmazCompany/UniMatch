@@ -165,6 +165,9 @@ function RootLayoutNav() {
                 name="ambassador"
                 options={{ presentation: "modal", headerShown: false, animation: "slide_from_bottom" }}
               />
+              <Stack.Screen name="ambassador/apply" options={{ headerShown: false }} />
+              <Stack.Screen name="events/index" options={{ headerShown: false }} />
+              <Stack.Screen name="events/create" options={{ headerShown: false }} />
             </>
           ) : (
             <>

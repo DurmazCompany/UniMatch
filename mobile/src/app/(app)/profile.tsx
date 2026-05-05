@@ -25,6 +25,7 @@ import { getZodiacSign, getZodiacInfo } from "@/lib/astrology";
 import { useScreenProtection } from "@/lib/hooks/useScreenProtection";
 import { usePrivacyStore } from "@/lib/state/privacyStore";
 import { useWallet } from "@/lib/hooks/useWallet";
+import { useMyAmbassadorApplication } from "@/lib/hooks/useAmbassador";
 import { openPaywallOnError } from "@/lib/hooks/usePaywallOnError";
 import { Alert } from "react-native";
 
@@ -224,6 +225,7 @@ export default function ProfileScreen() {
   });
 
   const { data: wallet } = useWallet();
+  const { data: ambassadorApp } = useMyAmbassadorApplication();
   const isAsk = wallet?.tier === "ask";
   const isInvisible = wallet?.is_invisible ?? false;
 
@@ -502,6 +504,31 @@ export default function ProfileScreen() {
 
           {/* Settings list */}
           <UMCard dark style={{ padding: 0, marginBottom: Spacing.xxl, overflow: "hidden" }}>
+            {profile.role === "ambassador" || profile.role === "admin" ? (
+              <SettingsItem
+                iconName="megaphone-outline"
+                label="Etkinliklerim"
+                onPress={() => router.push("/events")}
+              />
+            ) : (
+              <SettingsItem
+                iconName="megaphone-outline"
+                label={
+                  ambassadorApp?.status === "pending"
+                    ? "Elçi Başvurun İnceleniyor"
+                    : ambassadorApp?.status === "rejected"
+                    ? "Tekrar Başvur"
+                    : ambassadorApp?.status === "approved"
+                    ? "Etkinliklerim"
+                    : "Kampüs Elçisi Ol"
+                }
+                onPress={() =>
+                  ambassadorApp?.status === "approved"
+                    ? router.push("/events")
+                    : router.push("/ambassador/apply")
+                }
+              />
+            )}
             <SettingsItem
               iconName="wallet-outline"
               label="Bakiyem"
