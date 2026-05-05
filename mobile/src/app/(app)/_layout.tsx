@@ -117,9 +117,18 @@ export default function AppLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="chat/[matchId]" options={{ href: null }} />
-      <Tabs.Screen name="edit-profile" options={{ href: null }} />
-      <Tabs.Screen name="settings/notifications" options={{ href: null }} />
+      <Tabs.Screen
+        name="chat/[matchId]"
+        options={{ href: null, tabBarStyle: { display: "none" } }}
+      />
+      <Tabs.Screen
+        name="edit-profile"
+        options={{ href: null, tabBarStyle: { display: "none" } }}
+      />
+      <Tabs.Screen
+        name="settings/notifications"
+        options={{ href: null, tabBarStyle: { display: "none" } }}
+      />
     </Tabs>
   );
 }
