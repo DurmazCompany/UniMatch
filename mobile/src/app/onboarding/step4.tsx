@@ -75,10 +75,36 @@ export default function Step4Screen() {
     setLoading(true);
     setError("");
     try {
+      // Upload local file:// photos first; keep already-remote URLs as-is
+      const localPhotos = onboarding.photos ?? [];
+      const uploadedPhotos: string[] = [];
+      for (const photo of localPhotos) {
+        if (photo.startsWith("http")) {
+          uploadedPhotos.push(photo);
+          continue;
+        }
+        try {
+          const formData = new FormData();
+          formData.append("file", { uri: photo, type: "image/jpeg", name: "photo.jpg" } as any);
+          const res = await fetch(
+            `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/uploads/photo`,
+            { method: "POST", body: formData, credentials: "include" }
+          );
+          const data = await res.json();
+          if (data?.data?.url) {
+            uploadedPhotos.push(data.data.url);
+          } else {
+            uploadedPhotos.push(photo); // best effort
+          }
+        } catch {
+          uploadedPhotos.push(photo);
+        }
+      }
+
       const payload = {
         ...onboarding,
         hobbies: selectedHobbies,
-        photos: onboarding.photos ?? [],
+        photos: uploadedPhotos,
       };
       const result = await api.post("/api/profile", payload);
       if (!result) {
