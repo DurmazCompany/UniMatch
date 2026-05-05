@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Spacing, Radius } from "@/lib/theme";
 import { UMCard, UMButton } from "@/components/ui";
+import { CoinIcon, BoostIcon } from "@/components/icons/UnimatchIcons";
 import { api } from "@/lib/api/api";
 import { useWallet, formatCoinBalance } from "@/lib/hooks/useWallet";
 import { openPaywallOnError } from "@/lib/hooks/usePaywallOnError";
@@ -153,7 +154,7 @@ export default function BoostScreen() {
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <Ionicons name="flash" size={22} color={Colors.white} />
+              <BoostIcon size={26} active />
               <Text style={{ color: Colors.white, fontSize: 16, fontFamily: "DMSans_700Bold" }}>
                 Boostun aktif
               </Text>
@@ -209,7 +210,7 @@ export default function BoostScreen() {
                   justifyContent: "center",
                 }}
               >
-                <Ionicons name="flash-outline" size={20} color={Colors.primaryLight} />
+                <BoostIcon size={22} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: Colors.textOnDark, fontSize: 14, fontFamily: "DMSans_700Bold" }}>
@@ -297,7 +298,7 @@ export default function BoostScreen() {
                       justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="flash" size={20} color={Colors.primaryLight} />
+                    <BoostIcon size={22} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

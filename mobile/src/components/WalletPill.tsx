@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Colors, Radius } from "@/lib/theme";
 import { useWallet, formatCoinBalance } from "@/lib/hooks/useWallet";
+import { CoinIcon } from "@/components/icons/UnimatchIcons";
 
 export function WalletPill() {
   const { data: wallet } = useWallet();
@@ -29,7 +30,7 @@ export function WalletPill() {
         opacity: pressed ? 0.7 : 1,
       })}
     >
-      <Ionicons name="ellipse" size={14} color="#FFD66B" />
+      <CoinIcon size={18} />
       <Text style={{ color: Colors.textOnDark, fontFamily: "DMSans_700Bold", fontSize: 14 }}>
         {formatCoinBalance(balance)}
       </Text>

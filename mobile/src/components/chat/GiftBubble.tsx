@@ -1,15 +1,19 @@
 import { View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors, Radius, Spacing } from "@/lib/theme";
+import { GIFT_ICONS, GiftId } from "@/components/icons/UnimatchIcons";
 
 interface Props {
-  emoji: string;
+  giftId?: string;
+  emoji?: string;
   giftName: string;
   senderName?: string;
   isMine?: boolean;
 }
 
-export function GiftBubble({ emoji, giftName, senderName, isMine }: Props) {
+export function GiftBubble({ giftId, emoji, giftName, senderName, isMine }: Props) {
+  const Icon = giftId && (giftId in GIFT_ICONS) ? GIFT_ICONS[giftId as GiftId] : null;
+
   return (
     <View
       style={{ alignItems: "center", marginVertical: Spacing.md, alignSelf: "stretch" }}
@@ -35,7 +39,11 @@ export function GiftBubble({ emoji, giftName, senderName, isMine }: Props) {
             gap: 4,
           }}
         >
-          <Text style={{ fontSize: 56 }}>{emoji}</Text>
+          {Icon ? (
+            <Icon size={64} />
+          ) : (
+            <Text style={{ fontSize: 56 }}>{emoji ?? "🎁"}</Text>
+          )}
           <Text style={{ color: Colors.textOnDark, fontSize: 14, fontFamily: "DMSans_600SemiBold" }}>
             {giftName}
           </Text>

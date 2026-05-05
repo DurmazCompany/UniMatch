@@ -535,7 +535,8 @@ export default function ChatScreen() {
         return (
           <View style={{ paddingHorizontal: 16 }}>
             <GiftBubble
-              emoji={g.gift?.emoji ?? "🎁"}
+              giftId={g.gift?.id ?? g.giftId}
+              emoji={g.gift?.emoji}
               giftName={g.gift?.nameTr ?? "Hediye"}
               senderName={senderName}
               isMine={isMine}

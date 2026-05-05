@@ -8,6 +8,7 @@ import { useSendGift } from "@/lib/hooks/useSendGift";
 import { useWallet, formatCoinBalance } from "@/lib/hooks/useWallet";
 import { openPaywallOnError } from "@/lib/hooks/usePaywallOnError";
 import { GiftCatalogItem } from "@/lib/types";
+import { CoinIcon, GIFT_ICONS, GiftId } from "@/components/icons/UnimatchIcons";
 
 interface Props {
   visible: boolean;
@@ -96,7 +97,7 @@ export function GiftPicker({ visible, onClose, receiverId, matchId, onSent }: Pr
               marginBottom: Spacing.lg,
             }}
           >
-            <Ionicons name="ellipse" size={14} color="#FFD66B" />
+            <CoinIcon size={18} />
             <Text style={{ color: Colors.textOnDark, fontSize: 14, fontFamily: "DMSans_600SemiBold" }}>
               {formatCoinBalance(balance)} coin
             </Text>
@@ -146,7 +147,10 @@ export function GiftPicker({ visible, onClose, receiverId, matchId, onSent }: Pr
                         : "rgba(255,255,255,0.03)",
                     })}
                   >
-                    <Text style={{ fontSize: 36 }}>{item.emoji}</Text>
+                    {(() => {
+                      const Icon = (item.id in GIFT_ICONS) ? GIFT_ICONS[item.id as GiftId] : null;
+                      return Icon ? <Icon size={44} /> : <Text style={{ fontSize: 36 }}>{item.emoji}</Text>;
+                    })()}
                     <Text
                       style={{
                         color: Colors.textOnDark,
@@ -158,7 +162,7 @@ export function GiftPicker({ visible, onClose, receiverId, matchId, onSent }: Pr
                       {item.nameTr}
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                      <Ionicons name="ellipse" size={10} color="#FFD66B" />
+                      <CoinIcon size={12} />
                       <Text
                         style={{
                           color: canAfford ? Colors.textOnDarkMuted : "#FF6B6B",

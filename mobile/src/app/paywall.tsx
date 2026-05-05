@@ -23,6 +23,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Colors, Radius } from "@/lib/theme";
 import { UMButton } from "@/components/ui";
+import { CoinIcon, BoostIcon } from "@/components/icons/UnimatchIcons";
 import { purchasePackageById, restorePurchases } from "@/lib/revenue-cat";
 import {
   TIER_DEFINITIONS,
@@ -350,7 +351,7 @@ function CoinPackageCard({
           justifyContent: "center",
         }}
       >
-        <Ionicons name="ellipse" size={32} color="#FFD66B" />
+        <CoinIcon size={36} />
       </View>
 
       <View style={{ flex: 1 }}>
@@ -690,7 +691,7 @@ export default function PaywallScreen() {
             })}
           >
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primaryPale, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="flash" size={22} color={Colors.primary} />
+              <BoostIcon size={26} />
             </View>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -702,7 +703,7 @@ export default function PaywallScreen() {
                 ) : null}
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
-                <Ionicons name="ellipse" size={10} color="#FFD66B" />
+                <CoinIcon size={12} />
                 <Text style={{ color: Colors.textMuted, fontSize: 13, fontFamily: "DMSans_500Medium" }}>{b.coinCost.toLocaleString("tr-TR")} coin</Text>
               </View>
             </View>

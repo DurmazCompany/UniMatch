@@ -9,6 +9,7 @@ import { tr } from "date-fns/locale";
 import { api } from "@/lib/api/api";
 import { Colors, Radius, Spacing } from "@/lib/theme";
 import { UMCard, UMButton, TabSelector } from "@/components/ui";
+import { CoinIcon, GIFT_ICONS, GiftId } from "@/components/icons/UnimatchIcons";
 import { useWallet, formatCoinBalance } from "@/lib/hooks/useWallet";
 import { CoinLedgerEntry, GiftSent } from "@/lib/types";
 
@@ -143,7 +144,7 @@ export default function WalletScreen() {
                 marginBottom: 6,
               }}
             >
-              <Ionicons name="ellipse" size={32} color="#FFD66B" />
+              <CoinIcon size={40} />
               {walletLoading ? (
                 <ActivityIndicator color={Colors.primary} />
               ) : (
@@ -278,6 +279,8 @@ export default function WalletScreen() {
               const senderName = gift.sender?.name ?? "Birisi";
               const giftName = gift.gift?.nameTr ?? "Hediye";
               const emoji = gift.gift?.emoji ?? "🎁";
+              const giftId = gift.gift?.id;
+              const Icon = giftId && (giftId in GIFT_ICONS) ? GIFT_ICONS[giftId as GiftId] : null;
               return (
                 <UMCard key={gift.id} style={{ marginBottom: 8, padding: 14 }}>
                   <View
@@ -293,7 +296,7 @@ export default function WalletScreen() {
                         justifyContent: "center",
                       }}
                     >
-                      <Text style={{ fontSize: 28 }}>{emoji}</Text>
+                      {Icon ? <Icon size={36} /> : <Text style={{ fontSize: 28 }}>{emoji}</Text>}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text
@@ -317,7 +320,7 @@ export default function WalletScreen() {
                       </Text>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Ionicons name="ellipse" size={10} color="#FFD66B" />
+                      <CoinIcon size={12} />
                       <Text
                         style={{
                           color: Colors.textMuted,
