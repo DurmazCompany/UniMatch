@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Better Auth required models
+model User {
+  id             String    @id
+  name           String
+  email          String    @unique
+  emailVerified  Boolean   @default(false)
+  image          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  sessions       Session[]
+  accounts       Account[]
+  profile        Profile?
+  blocksGiven    Block[]   @relation("BlockerBlocks")
+  blocksReceived Block[]   @relation("BlockedBlocks")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model University {
+  id          String    @id @default(cuid())
+  displayName String    // "Yeditepe Üniversitesi"
+  slug        String    @unique  // "yeditepe"
+  emailDomain String    @unique  // "yeditepe.edu.tr"
+  logoUrl     String?
+  createdAt   DateTime  @default(now())
+  profiles    Profile[]
+}
+
+model Profile {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university        String    // User-entered university name / display string
+  name              String
+  birthDate         DateTime
+  gender            String    // "male", "female", "other"
+  department        String
+  year              Int       // 1-6
+  bio               String?
+  photos            String    // JSON array of photo URLs
+  hobbies           String?   // JSON array
+  lifestyle         String?   // JSON object with schedule (morning/night) and spot (library/cafeteria/outdoor)
+  selfieVerified    Boolean   @default(false)
+  profilePower      Int       @default(0) // 0-100
+  streakCount       Int       @default(0)
+  lastStreakDate    DateTime?
+  swipesToday       Int       @default(0)
+  lastSwipeDate     DateTime?
+  superLikesLeft    Int       @default(1) // resets daily for free
+  isOnCampusToday   Boolean   @default(false)
+  onCampusTodayDate DateTime?
+  isPremium         Boolean   @default(false)
+  premiumUntil      DateTime?
+  pushToken         String?   // Expo push notification token
+  universityId      String?
+  universityRef     University? @relation(fields: [universityId], references: [id])
+  role              String    @default("user")   // "user" | "ambassador" | "admin"
+  referralCode      String    @default("")       // auto-generated on first profile create
+  isBanned              Boolean   @default(false)
+  banReason             String?
+  bannedUntil           DateTime?
+  subscriptionTier      String    @default("crush") // "crush" | "flort" | "ask"
+  subscriptionExpiresAt DateTime?
+  ambassadorGrantedAt   DateTime?
+  isInvisible           Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sentSwipes          Swipe[]           @relation("SwiperProfile")
+  receivedSwipes      Swipe[]           @relation("SwipedProfile")
+  matchesAsUser1      Match[]           @relation("MatchUser1")
+  matchesAsUser2      Match[]           @relation("MatchUser2")
+  sentMessages        Message[]
+  createdEvents       Event[]           @relation("EventCreator")
+  eventParticipations EventParticipant[]
+  referralsSent       Referral[]        @relation("ReferralInviter")
+  referralsReceived   Referral[]        @relation("ReferralInvited")
+  adminActionsTaken     AdminAction[]          @relation("AdminActionAdmin")
+  adminActionsReceived  AdminAction[]          @relation("AdminActionTarget")
+  ambassadorApplication AmbassadorApplication?
+}
+
+model AdminAction {
+  id           String   @id @default(cuid())
+  adminId      String
+  actionType   String   // "ban" | "unban" | "grant_premium" | "revoke_premium" | "change_role" | "approve_ambassador" | "reject_ambassador" | "deactivate_event"
+  targetUserId String?
+  details      String?  // JSON
+  createdAt    DateTime @default(now())
+  admin        Profile  @relation("AdminActionAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+  target       Profile? @relation("AdminActionTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([adminId])
+  @@index([targetUserId])
+  @@index([actionType])
+}
+
+model AmbassadorApplication {
+  id           String   @id @default(cuid())
+  profileId    String   @unique
+  university   String
+  faculty      String
+  year         Int
+  motivation   String
+  socialLinks  String?  // JSON
+  status       String   @default("pending") // "pending" | "approved" | "rejected"
+  rejectReason String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model Swipe {
+  id         String   @id @default(cuid())
+  swiperId   String
+  swipedId   String
+  direction  String   // "like", "pass", "super"
+  createdAt  DateTime @default(now())
+  swiper     Profile  @relation("SwiperProfile", fields: [swiperId], references: [id], onDelete: Cascade)
+  swiped     Profile  @relation("SwipedProfile", fields: [swipedId], references: [id], onDelete: Cascade)
+
+  @@unique([swiperId, swipedId])
+}
+
+model Match {
+  id                  String    @id @default(cuid())
+  user1Id             String
+  user2Id             String
+  matchedAt           DateTime  @default(now())
+  expiresAt           DateTime  // 48 hours after match
+  iceBreakerQuestion  String
+  iceBreakerAccepted  Boolean   @default(false)
+  compatibilityScore  Int       @default(0) // 0-100
+  isActive            Boolean   @default(true)
+  user1               Profile   @relation("MatchUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2               Profile   @relation("MatchUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  messages            Message[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+model Message {
+  id            String    @id @default(cuid())
+  matchId       String
+  senderId      String
+  content       String
+  messageType   String    @default("text") // "text", "voice", "photo", "ephemeral_photo"
+  voiceUrl      String?   // URL to voice message file
+  voiceDuration Int?      // Duration in seconds
+  expiresAt     DateTime? // For ephemeral messages
+  isDeleted     Boolean   @default(false) // Soft delete
+  createdAt     DateTime  @default(now())
+  match         Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  sender        Profile   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([matchId])
+  @@index([senderId])
+}
+
+model Event {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  date          DateTime
+  location      String
+  createdById   String
+  createdBy     Profile   @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  university    String?
+  isActive      Boolean   @default(true)
+  isPaid        Boolean   @default(false)
+  ticketPrice   Float?
+  maxAttendees  Int?
+  ticketsSold   Int       @default(0)
+  createdAt     DateTime  @default(now())
+  participants  EventParticipant[]
+}
+
+model EventParticipant {
+  id         String   @id @default(cuid())
+  eventId    String
+  profileId  String
+  hasPaid    Boolean  @default(false)
+  paymentRef String?
+  createdAt  DateTime @default(now())
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, profileId])
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  inviterId   String
+  invitedId   String
+  rewardGiven Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  inviter     Profile  @relation("ReferralInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  invited     Profile  @relation("ReferralInvited", fields: [invitedId], references: [id], onDelete: Cascade)
+
+  @@unique([invitedId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker   User     @relation("BlockerBlocks", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("BlockedBlocks", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
